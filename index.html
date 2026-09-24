@@ -7075,5 +7075,296 @@ window.addEventListener(
 })();
 </script>
 
+
+<style id="kulzzy-true-standalone-css">
+/* =========================================================
+   KULZZY TRUE STANDALONE PAGES
+   The clicked DOM node is physically moved into one opaque,
+   full-screen host. Nothing from the original page can show through.
+========================================================= */
+#kulzzyStandaloneHost{
+    position:fixed !important;
+    inset:0 !important;
+    width:100vw !important;
+    height:100dvh !important;
+    min-height:100dvh !important;
+    margin:0 !important;
+    padding:0 !important;
+    background:#001b2b !important;
+    z-index:2147483640 !important;
+    display:none;
+    overflow:hidden !important;
+    isolation:isolate !important;
+    overscroll-behavior:contain !important;
+}
+#kulzzyStandaloneHost.open{display:block !important}
+html.kulzzyStandaloneLocked,
+body.kulzzyStandaloneLocked{
+    overflow:hidden !important;
+    width:100% !important;
+    height:100% !important;
+    position:relative !important;
+    overscroll-behavior:none !important;
+}
+body.kulzzyStandaloneLocked > *:not(#kulzzyStandaloneHost){
+    visibility:hidden !important;
+    pointer-events:none !important;
+}
+#kulzzyStandaloneHost .kulzzyStandalonePage{
+    position:absolute !important;
+    inset:0 !important;
+    width:100% !important;
+    height:100% !important;
+    min-height:100% !important;
+    max-height:none !important;
+    margin:0 !important;
+    padding-top:max(0px, env(safe-area-inset-top)) !important;
+    padding-bottom:max(0px, env(safe-area-inset-bottom)) !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    -webkit-overflow-scrolling:touch !important;
+    overscroll-behavior:contain !important;
+    touch-action:pan-y !important;
+    scrollbar-width:none !important;
+    -ms-overflow-style:none !important;
+    background:#001b2b !important;
+}
+#kulzzyStandaloneHost .kulzzyStandalonePage::-webkit-scrollbar{width:0 !important;height:0 !important;display:none !important}
+#kulzzyStandaloneHost .kulzzyStandalonePage.community-pair{padding-left:0 !important;padding-right:0 !important}
+#kulzzyStandaloneHost .kulzzyStandalonePage.community-pair > .community-section{margin:0 !important}
+#kulzzyStandaloneHost .kulzzyStandalonePage.post-full-preview{background:#000 !important}
+#kulzzyStandaloneHost .kulzzyStandalonePage.image-viewer{background:#001b2b !important}
+#kulzzyStandaloneHost .kulzzyStandalonePage.camera-modal,
+#kulzzyStandaloneHost .kulzzyStandalonePage.social-profile-modal,
+#kulzzyStandaloneHost .kulzzyStandalonePage.private-inbox-modal,
+#kulzzyStandaloneHost .kulzzyStandalonePage.first-signin-popup,
+#kulzzyStandaloneHost .kulzzyStandalonePage.uploaded-pictures-modal,
+#kulzzyStandaloneHost .kulzzyStandalonePage.post-preview,
+#kulzzyStandaloneHost .kulzzyStandalonePage.auth-gate{
+    display:block !important;
+    align-items:initial !important;
+    justify-content:initial !important;
+    top:0 !important;
+    right:0 !important;
+    bottom:0 !important;
+    left:0 !important;
+    inset:0 !important;
+    height:100% !important;
+    width:100% !important;
+    padding:16px !important;
+}
+#kulzzyStandaloneHost .kulzzyStandalonePage .camera-card,
+#kulzzyStandaloneHost .kulzzyStandalonePage .post-preview-card,
+#kulzzyStandaloneHost .kulzzyStandalonePage .social-profile-card,
+#kulzzyStandaloneHost .kulzzyStandalonePage .private-inbox-card,
+#kulzzyStandaloneHost .kulzzyStandalonePage .uploaded-pictures-card,
+#kulzzyStandaloneHost .kulzzyStandalonePage .first-signin-card,
+#kulzzyStandaloneHost .kulzzyStandalonePage .auth-card{
+    margin:0 auto !important;
+    max-width:900px !important;
+}
+#kulzzyStandaloneClose{
+    position:fixed !important;
+    top:max(12px, env(safe-area-inset-top)) !important;
+    right:12px !important;
+    width:44px !important;
+    height:44px !important;
+    min-width:44px !important;
+    border:2px solid #ffd000 !important;
+    border-radius:50% !important;
+    background:#062d3e !important;
+    color:#ffd000 !important;
+    font-size:28px !important;
+    line-height:1 !important;
+    font-weight:bold !important;
+    z-index:2147483647 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    cursor:pointer !important;
+    box-shadow:0 4px 18px rgba(0,0,0,.45) !important;
+    touch-action:manipulation !important;
+}
+#kulzzyStandaloneHost .community-chat-pair,
+#kulzzyStandaloneHost .community-feed-pair{
+    background:#001b2b !important;
+}
+#kulzzyStandaloneHost .community-chat-pair .community-chat-list.chat-limited{
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+}
+#kulzzyStandaloneHost .community-chat-pair .community-chat-more{display:block !important}
+#kulzzyStandaloneHost .community-feed-pair .feed{padding-bottom:20px !important}
+</style>
+
+<script id="kulzzy-true-standalone-js">
+(function(){
+    'use strict';
+
+    const ROOT_SELECTORS=[
+        '.app > .intro',
+        '.app > .user-search-wrap',
+        '.app > #profileArea',
+        '.app > .community-layout > .community-pair.community-chat-pair',
+        '.app > .community-layout > .community-pair.community-feed-pair',
+        '.app > #postPreview',
+        '.app > #postFullPreview',
+        '.app > .community-layout > #cameraModal',
+        '.app > .community-layout > #socialProfileModal',
+        '.app > .community-layout > #firstSignInPopup',
+        '.app > .community-layout > #privateInboxModal',
+        '.app > .community-layout > #uploadedPicturesModal',
+        '.app > .community-layout > #notificationPanel',
+        '.app > .community-layout > #imageViewer'
+    ];
+
+    const MODAL_IDS=new Set([
+        'authGate','cameraModal','postPreview','postFullPreview','imageViewer',
+        'socialProfileModal','privateInboxModal','firstSignInPopup','uploadedPicturesModal'
+    ]);
+
+    const state={current:null,placeholder:null,scrollTop:0,host:null,close:null,opening:false};
+
+    function ensureHost(){
+        if(state.host) return state.host;
+        const host=document.createElement('div');
+        host.id='kulzzyStandaloneHost';
+        document.body.appendChild(host);
+        state.host=host;
+        return host;
+    }
+
+    function isVisible(el){
+        if(!el || !el.isConnected) return false;
+        const s=getComputedStyle(el);
+        return s.display!=='none' && s.visibility!=='hidden';
+    }
+
+    function isControl(target){
+        if(!(target instanceof Element)) return true;
+        return !!target.closest('button,a,input,textarea,select,label,[contenteditable="true"],video,.post-image-wrap,.gallery-item,.post-actions,.comments,.profile-menu,.moments-menu,.community-chat-nav,.community-chat-composer-under,.touch-drag-scroll,#kulzzyStandaloneClose');
+    }
+
+    function getRoot(target){
+        if(!(target instanceof Element)) return null;
+        for(const selector of ROOT_SELECTORS){
+            const root=document.querySelector(selector);
+            if(root && root.contains(target)) return root;
+        }
+        return null;
+    }
+
+    function makeClose(){
+        const b=document.createElement('button');
+        b.id='kulzzyStandaloneClose';
+        b.type='button';
+        b.setAttribute('aria-label','Close page');
+        b.textContent='×';
+        b.addEventListener('click',()=>closeStandalone());
+        return b;
+    }
+
+    function lock(){
+        document.documentElement.classList.add('kulzzyStandaloneLocked');
+        document.body.classList.add('kulzzyStandaloneLocked');
+    }
+
+    function unlock(){
+        document.documentElement.classList.remove('kulzzyStandaloneLocked');
+        document.body.classList.remove('kulzzyStandaloneLocked');
+    }
+
+    function openStandalone(root,auto=false){
+        if(!root || state.current===root || state.opening) return;
+        if(!auto && isControl(root)) return;
+        state.opening=true;
+
+        const host=ensureHost();
+        state.scrollTop=window.scrollY || document.documentElement.scrollTop || 0;
+        state.current=root;
+        state.placeholder=document.createComment('kulzzy-standalone-return');
+        root.parentNode.insertBefore(state.placeholder,root);
+        root.classList.add('kulzzyStandalonePage');
+        host.appendChild(root);
+        state.close=makeClose();
+        host.appendChild(state.close);
+        host.classList.add('open');
+        lock();
+
+        requestAnimationFrame(()=>{
+            root.scrollTop=0;
+            if(root.id==='postFullPreview' || root.id==='imageViewer'){
+                const inner=root.querySelector('.post-full-preview-content,.viewer-content');
+                if(inner) inner.scrollTop=0;
+            }
+            state.opening=false;
+        });
+    }
+
+    function closeStandalone(){
+        const root=state.current;
+        if(!root) return;
+
+        if(MODAL_IDS.has(root.id)){
+            root.classList.remove('show');
+            if(root.id==='authGate') root.style.display='none';
+        }
+
+        if(state.close) state.close.remove();
+        root.classList.remove('kulzzyStandalonePage');
+        if(state.placeholder && state.placeholder.parentNode){
+            state.placeholder.parentNode.insertBefore(root,state.placeholder);
+            state.placeholder.remove();
+        }else{
+            document.querySelector('.app')?.appendChild(root);
+        }
+        state.current=null;
+        state.placeholder=null;
+        state.close=null;
+        hostCleanup();
+        unlock();
+        requestAnimationFrame(()=>window.scrollTo(0,state.scrollTop));
+    }
+
+    function hostCleanup(){
+        if(state.host){
+            state.host.classList.remove('open');
+            if(state.host.children.length===0) state.host.style.display='none';
+        }
+    }
+
+    document.addEventListener('click',function(e){
+        if(state.current) return;
+        const root=getRoot(e.target);
+        if(!root) return;
+        if(isControl(e.target)) return;
+        openStandalone(root,false);
+    },true);
+
+    /* If an existing Firebase/UI action opens one of the old modal layers,
+       move that actual DOM node into the standalone host automatically. */
+    const observer=new MutationObserver(mutations=>{
+        if(state.current || state.opening) return;
+        for(const m of mutations){
+            const el=m.target instanceof Element ? m.target : null;
+            if(!el || !MODAL_IDS.has(el.id)) continue;
+            if(el.classList.contains('show') || (el.id==='authGate' && el.style.display==='flex')){
+                openStandalone(el,true);
+                return;
+            }
+        }
+    });
+    observer.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','style']});
+
+    document.addEventListener('keydown',e=>{
+        if(e.key==='Escape' && state.current) closeStandalone();
+    });
+
+    window.kulzzyOpenStandalone=openStandalone;
+    window.kulzzyCloseStandalone=closeStandalone;
+})();
+</script>
+
 </body>
 </html>
