@@ -3414,7 +3414,11 @@ authSubmit.addEventListener("click", async()=>{
         if(authMode==="signup"){
             credential=await createUserWithEmailAndPassword(auth,email,password);
             localStorage.setItem("kulzzyNewCommunityUser","1");
-        }else credential=await signInWithEmailAndPassword(auth,email,password);
+        }else{
+            credential=await signInWithEmailAndPassword(auth,email,password);
+            /* A normal login must never open the new-user signup/profile popup. */
+            localStorage.removeItem("kulzzyNewCommunityUser");
+        }
         firebaseUser=credential.user;
         setStableUserId(firebaseUser.uid);
         localStorage.setItem("kulzzyCommunityLoggedIn","1");
@@ -3454,8 +3458,10 @@ function startAuthListener(){
     return new Promise(resolve=>{
         let first=true;
 
-        /* The login gate stays over the app until Firebase confirms a signed-in user. */
-        showAuthGate();
+        /* Wait for Firebase to tell us the real auth state before showing either screen.
+           This prevents the Sign Up box from flashing/appearing after a valid login. */
+        authGate.style.display="none";
+        if(appRoot) appRoot.style.display="none";
 
         onAuthStateChanged(auth,async user=>{
             firebaseUser=user;
