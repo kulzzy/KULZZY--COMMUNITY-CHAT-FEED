@@ -2041,6 +2041,56 @@ body { overflow-x:hidden; }
     overscroll-behavior-y:contain;
 }
 
+
+/* REQUESTED FIXES: remove the top-right close control and allow touch scrolling on subpages */
+.first-signin-close{
+    display:none !important;
+}
+
+/* Keep the app navigation above page overlays when a navigation element is present. */
+nav, #navigation, #navigationBar, #bottomNavigation, .navigation-bar, .bottom-navigation, .bottom-nav{
+    position:relative;
+    z-index:2147483000 !important;
+}
+
+/* Mobile touch scrolling for the listed subpages and their contents. */
+.profile-menu,
+.moments-menu,
+.camera-modal,
+.social-profile-modal,
+.private-inbox-modal,
+.private-inbox-card,
+.uploaded-pictures-modal,
+.uploaded-pictures-card,
+.monetization-modal,
+.monetization-card,
+.profile-editor,
+.profile-editor-modal,
+.profile-saved-view,
+.post-preview,
+.post-preview-card{
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+}
+.profile-menu,
+.moments-menu{
+    max-height:calc(100dvh - 24px);
+    overflow-y:auto;
+}
+.camera-card,
+.social-profile-card,
+.private-inbox-card,
+.uploaded-pictures-card,
+.monetization-card,
+.profile-editor,
+.profile-editor-modal,
+.post-preview-card{
+    max-height:calc(100dvh - 28px);
+    overflow-y:auto;
+    overflow-x:hidden;
+}
+
 </style>
 </head>
 
