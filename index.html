@@ -5694,35 +5694,6 @@ async function follow(
         time: Date.now()
     }
 );
-            {
-
-                type:
-                    "follow",
-
-                uid:
-                    owner,
-
-                fromUid:
-                    userId,
-
-                name:
-                    savedProfile?.name ||
-                    "Listener",
-
-                text:
-                    (
-                        savedProfile?.name ||
-                        "Someone"
-                    ) +
-                    " followed you.",
-
-                time:
-                    Date.now()
-
-            }
-        );
-
-    }
 
 
     countElement.textContent=
