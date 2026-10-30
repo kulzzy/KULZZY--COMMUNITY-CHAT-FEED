@@ -4560,13 +4560,24 @@ postPictureBtn.onclick=async()=>{
         if(!postRef.key) throw new Error("The picture uploaded, but the community post could not be confirmed.");
 
         try{
-            await set(push(ref(db,"notifications")),{
-                type:"post",uid:userId,name:savedProfile.name,
-                text:savedProfile.name+" posted "+(images.length>1?"pictures.":"a picture."),time:Date.now()
-            });
-        }catch(notificationError){
-            console.warn("Notification could not be saved:",notificationError);
+    await set(
+        push(ref(db, "notifications/" + userId)),
+        {
+            type: "post",
+            uid: userId,
+            name: savedProfile.name,
+            text: savedProfile.name +
+                " posted " +
+                (images.length > 1 ? "pictures." : "a picture."),
+            time: Date.now()
         }
+    );
+}catch(notificationError){
+    console.warn(
+        "Notification could not be saved:",
+        notificationError
+    );
+}
 
         cancelPostPreview();
         messageBox.value=""; resize();
@@ -5667,12 +5678,22 @@ async function follow(
 
 
         await set(
-            push(
-                ref(
-                    db,
-                    "notifications"
-                )
-            ),
+    push(
+        ref(
+            db,
+            "notifications/" + owner
+        )
+    ),
+    {
+        type: "follow",
+        uid: owner,
+        fromUid: userId,
+        name: savedProfile?.name || "Listener",
+        text: (savedProfile?.name || "Someone") +
+            " followed you.",
+        time: Date.now()
+    }
+);
             {
 
                 type:
@@ -6319,48 +6340,54 @@ onValue(
 
 
 /* =========================
-   NOTIFICATIONS
+   PRIVATE MEMBER NOTIFICATIONS
 ========================= */
 
-onValue(
-    ref(
-        db,
-        "notifications"
-    ),
-    snapshot=>{
+if (userId) {
+    onValue(
+        ref(db, "notifications/" + userId),
+        snapshot => {
+            notificationList.innerHTML = "";
 
-        notificationList.innerHTML=
-            "";
-
-
-        if(
-            !snapshot.exists()
-        ){
-
-            notificationList.innerHTML=
-                `
-                <div class="notification-item">
-                    No notifications.
-                </div>
+            if (!snapshot.exists()) {
+                notificationList.innerHTML = `
+                    <div class="notification-item">
+                        No notifications.
+                    </div>
                 `;
-
-            return;
-
-        }
-
-
-        const items=[];
-
-
-        snapshot.forEach(
-            child=>{
-
-                items.push(
-                    child.val()
-                );
-
+                return;
             }
-        );
+
+            const items = [];
+
+            snapshot.forEach(child => {
+                items.push(child.val());
+            });
+
+            items.sort(
+                (a, b) => (b.time || 0) - (a.time || 0)
+            );
+
+            items.slice(0, 30).forEach(item => {
+                const div = document.createElement("div");
+
+                div.className = "notification-item";
+                div.textContent = item.text || "New activity.";
+
+                notificationList.appendChild(div);
+            });
+        },
+        error => {
+            console.error("Notification read error:", error);
+
+            notificationList.innerHTML = `
+                <div class="notification-item">
+                    Unable to load notifications.
+                </div>
+            `;
+        }
+    );
+}
 
 
         items.sort(
