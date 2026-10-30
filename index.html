@@ -5445,51 +5445,59 @@ uploadedPicturesGrid.addEventListener("click",async event=>{
 
 async function openPrivateInbox(){
 
-    profileMenu.classList.remove(
-        "show"
-    );
+    if(!userId){
+        showToast("Please log in first.");
+        return;
+    }
 
-    privateInboxModal.classList.add(
-        "show"
-    );
+    profileMenu.classList.remove("show");
+    privateInboxModal.classList.add("show");
 
     privateInboxList.innerHTML=`
         <div class="private-inbox-empty">
-            Loading private messages...
+            Loading your private messages...
         </div>
     `;
 
     try{
+        const conversations={};
+        const otherUserIds=Object.keys(profilesCache || {})
+            .filter(uid=>uid && uid!==userId);
 
-        const snapshot=
-            await get(
-                ref(
-                    db,
-                    "privateChats"
-                )
-            );
+        const results=await Promise.all(
+            otherUserIds.map(async otherUid=>{
+                const members=[userId,otherUid].sort();
+                const conversationId=members.join("_");
 
-        renderPrivateInboxMessages(
-            snapshot.exists()
-                ? snapshot.val()
-                : {}
+                try{
+                    const snapshot=await get(
+                        ref(db,"privateChats/"+conversationId)
+                    );
+
+                    if(snapshot.exists()){
+                        conversations[conversationId]=snapshot.val();
+                    }
+                }catch(error){
+                    console.warn(
+                        "Conversation unavailable:",
+                        conversationId,
+                        error.message
+                    );
+                }
+            })
         );
+
+        renderPrivateInboxMessages(conversations);
 
     }catch(error){
-
-        console.error(
-            "Private inbox error:",
-            error
-        );
+        console.error("Private inbox error:",error);
 
         privateInboxList.innerHTML=`
             <div class="private-inbox-empty">
-                Unable to load private messages.
+                Unable to load private messages. Please try again.
             </div>
         `;
-
     }
-
 }
 
 
