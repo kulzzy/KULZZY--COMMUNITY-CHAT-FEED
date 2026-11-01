@@ -3193,6 +3193,7 @@ function startAuthListener(){
             if(user){
                 setStableUserId(user.uid);
                 localStorage.setItem("kulzzyCommunityLoggedIn","1");
+                startPrivateNotificationsListener(user.uid);
                 startOwnProfileStatsListeners();
 /* =========================
    KULZZY MONETIZATION
@@ -3302,6 +3303,10 @@ if(monetizationModal) monetizationModal.addEventListener("click",event=>{
                     resolve(user);
                 }
             }else{
+                if (stopPrivateNotificationsListener) {
+                    stopPrivateNotificationsListener();
+                    stopPrivateNotificationsListener = null;
+                }
                 localStorage.removeItem("kulzzyCommunityLoggedIn");
                 startOwnProfileStatsListeners();
                 showAuthGate();
@@ -5701,8 +5706,8 @@ async function follow(
             owner
         );
 
+    }
 }
-
 
 async function setFollow(
     owner,
@@ -6314,9 +6319,21 @@ onValue(
    PRIVATE MEMBER NOTIFICATIONS
 ========================= */
 
-if (userId) {
-    onValue(
-        ref(db, "notifications/" + userId),
+let stopPrivateNotificationsListener = null;
+
+function startPrivateNotificationsListener(uid) {
+    if (stopPrivateNotificationsListener) {
+        stopPrivateNotificationsListener();
+        stopPrivateNotificationsListener = null;
+    }
+
+    if (!uid) {
+        notificationList.innerHTML = "";
+        return;
+    }
+
+    stopPrivateNotificationsListener = onValue(
+        ref(db, "notifications/" + uid),
         snapshot => {
             notificationList.innerHTML = "";
 
@@ -6341,16 +6358,13 @@ if (userId) {
 
             items.slice(0, 30).forEach(item => {
                 const div = document.createElement("div");
-
                 div.className = "notification-item";
                 div.textContent = item.text || "New activity.";
-
                 notificationList.appendChild(div);
             });
         },
         error => {
             console.error("Notification read error:", error);
-
             notificationList.innerHTML = `
                 <div class="notification-item">
                     Unable to load notifications.
@@ -6359,41 +6373,6 @@ if (userId) {
         }
     );
 }
-
-
-        items.sort(
-            (a,b)=>
-                (b.time || 0) -
-                (a.time || 0)
-        );
-
-
-        items
-        .slice(0,30)
-        .forEach(
-            item=>{
-
-                const div=
-                    document.createElement(
-                        "div"
-                    );
-
-                div.className=
-                    "notification-item";
-
-                div.textContent=
-                    item.text ||
-                    "New activity.";
-
-                notificationList.appendChild(
-                    div
-                );
-
-            }
-        );
-
-    }
-);
 
 
 /* =========================
