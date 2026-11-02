@@ -2511,6 +2511,48 @@ class="post-full-preview-gallery">
   font-size:9px;
   margin-top:5px;
 }
+    /* CONTAIN CONTESTANTS AND RESULTS INSIDE LEADERSHIP */
+#kulzzyLeadership #klcContestants {
+  max-height:390px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:3px 6px 8px 2px;
+  border:1px solid #263c60;
+  border-radius:10px;
+  background:#091a35;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#ffd700 #10264a;
+}
+
+#kulzzyLeadership #klcContestants::-webkit-scrollbar,
+#kulzzyLeadership #klcResults::-webkit-scrollbar {
+  width:7px;
+}
+
+#kulzzyLeadership #klcContestants::-webkit-scrollbar-thumb,
+#kulzzyLeadership #klcResults::-webkit-scrollbar-thumb {
+  background:#ffd700;
+  border-radius:10px;
+}
+
+#kulzzyLeadership #klcContestants::-webkit-scrollbar-track,
+#kulzzyLeadership #klcResults::-webkit-scrollbar-track {
+  background:#10264a;
+}
+
+#kulzzyLeadership #klcResults {
+  max-height:300px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:3px 6px;
+  border:1px solid #263c60;
+  border-radius:10px;
+  background:#091a35;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+}
 #kulzzyLeadership .klc-top-track {
   display:flex;
   gap:10px;
