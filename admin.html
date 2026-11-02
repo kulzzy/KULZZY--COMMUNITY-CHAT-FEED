@@ -1,1 +1,141 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kulzzy Leadership Admin</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  padding:18px;
+  background:#06122a;
+  color:white;
+  font-family:Arial,sans-serif;
+}
+.container{
+  max-width:750px;
+  margin:auto;
+}
+header{
+  text-align:center;
+  padding:22px 12px;
+  border:1px solid #ffd700;
+  border-radius:14px;
+  margin-bottom:20px;
+}
+h1{
+  color:#ffd700;
+  font-size:23px;
+}
+h2{
+  color:#ffd700;
+  font-size:17px;
+}
+.panel{
+  background:#0b1b38;
+  border:1px solid #314365;
+  border-radius:12px;
+  padding:16px;
+  margin:15px 0;
+}
+button{
+  width:100%;
+  padding:14px;
+  margin:7px 0;
+  border:0;
+  border-radius:8px;
+  background:#ffd700;
+  color:#06122a;
+  font-weight:bold;
+  font-size:14px;
+  cursor:pointer;
+}
+button:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+.danger{
+  background:#b42323;
+  color:white;
+}
+.status{
+  color:#ffd700;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  line-height:1.5;
+}
+.result{
+  background:#102544;
+  border:1px solid #314365;
+  border-radius:9px;
+  padding:12px;
+  margin:8px 0;
+}
+.small{
+  color:#c6d0e3;
+  font-size:12px;
+  margin-top:5px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<header>
+  <h1>🔐 KULZZY UNIVERSAL LEADERSHIP</h1>
+  <p>PRIVATE ADMINISTRATION PANEL</p>
+  <p class="small">Authorised administrator access only</p>
+</header>
+
+<div class="panel">
+  <h2>ADMINISTRATOR STATUS</h2>
+  <div id="adminStatus" class="status">
+    Checking administrator access...
+  </div>
+</div>
+
+<div class="panel">
+  <h2>TODAY'S CHALLENGE</h2>
+  <div id="adminDate" class="status">Loading date...</div>
+  <div id="votingStatus" class="status">Checking voting status...</div>
+</div>
+
+<div class="panel" id="adminControls" style="display:none">
+  <h2>VOTE MANAGEMENT</h2>
+
+  <button id="viewVotes">
+    VIEW PRIVATE VOTE TOTALS
+  </button>
+
+  <button id="publishResults">
+    PUBLISH OFFICIAL RESULTS
+  </button>
+
+  <button id="closeVoting" class="danger">
+    CLOSE VOTING & PUBLISH FINAL RESULTS
+  </button>
+</div>
+
+<div class="panel">
+  <h2>CONTESTANT VOTE TOTALS</h2>
+  <div id="adminResults">
+    Administrator access is required to view vote totals.
+  </div>
+</div>
+
+<div class="panel">
+  <h2>ADMINISTRATOR ACTIVITY</h2>
+  <div id="adminMessage" class="status">
+    Waiting for administrator...
+  </div>
+</div>
+
+</div>
+
+<script type="module" src="./admin.js"></script>
+</body>
+</html>
