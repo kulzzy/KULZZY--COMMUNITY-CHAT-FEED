@@ -2374,7 +2374,281 @@ class="post-full-preview-gallery">
 
 
 <!-- COMMUNITY CHAT / FEED LAYOUT -->
+<!-- ==========================================
+     KULZZY UNIVERSAL LEADERSHIP CHALLENGE
+     INSERT BEFORE COMMUNITY CHAT
+========================================== -->
 
+<style>
+#kulzzyLeadership {
+  width:100%;
+  box-sizing:border-box;
+  margin:18px auto;
+  padding:16px;
+  color:#fff;
+  background:#06122a;
+  border:1px solid rgba(255,215,0,.45);
+  border-radius:16px;
+  font-family:Arial,sans-serif;
+}
+#kulzzyLeadership * {box-sizing:border-box}
+#kulzzyLeadership .klc-heading {
+  text-align:center;
+  color:#ffd700;
+  font-size:22px;
+  font-weight:900;
+  margin:4px 0 8px;
+}
+#kulzzyLeadership .klc-motto {
+  text-align:center;
+  font-size:12px;
+  color:#e6e6e6;
+  margin-bottom:16px;
+}
+#kulzzyLeadership .klc-action {
+  display:block;
+  width:100%;
+  border:0;
+  border-radius:9px;
+  padding:13px 12px;
+  margin:9px 0;
+  background:#ffd700;
+  color:#06122a;
+  font-size:14px;
+  font-weight:900;
+  cursor:pointer;
+}
+#kulzzyLeadership .klc-secondary {
+  background:#14294d;
+  color:#ffd700;
+  border:1px solid #ffd700;
+}
+#kulzzyLeadership .klc-status {
+  text-align:center;
+  font-size:13px;
+  color:#ffd700;
+  padding:9px 4px;
+  line-height:1.5;
+}
+#kulzzyLeadership .klc-card {
+  background:#0d1d3a;
+  border:1px solid #263c60;
+  border-radius:11px;
+  padding:12px;
+  margin:9px 0;
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-width:0;
+}
+#kulzzyLeadership .klc-card img {
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  object-fit:cover;
+  border:2px solid #ffd700;
+  flex-shrink:0;
+}
+#kulzzyLeadership .klc-person {
+  flex:1;
+  min-width:0;
+}
+#kulzzyLeadership .klc-name {
+  color:#fff;
+  font-weight:800;
+  overflow-wrap:anywhere;
+}
+#kulzzyLeadership .klc-small {
+  color:#b8c6dc;
+  font-size:12px;
+  margin-top:4px;
+  overflow-wrap:anywhere;
+}
+#kulzzyLeadership .klc-rank {
+  color:#ffd700;
+  font-size:12px;
+  font-weight:900;
+  margin-top:5px;
+}
+#kulzzyLeadership .klc-vote {
+  background:#ffd700;
+  color:#06122a;
+  border:0;
+  border-radius:7px;
+  padding:9px 11px;
+  font-weight:900;
+  flex-shrink:0;
+  cursor:pointer;
+}
+#kulzzyLeadership .klc-search {
+  width:100%;
+  padding:12px;
+  border-radius:8px;
+  border:1px solid #526786;
+  background:#fff;
+  color:#111;
+  font-size:14px;
+  margin:10px 0;
+}
+#kulzzyLeadership .klc-section-title {
+  color:#ffd700;
+  font-weight:900;
+  margin:19px 0 8px;
+}
+#kulzzyLeadership .klc-top-track {
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  padding:5px 1px 12px;
+  scroll-snap-type:x mandatory;
+}
+#kulzzyLeadership .klc-top-card {
+  min-width:220px;
+  max-width:220px;
+  background:#10264a;
+  border:1px solid #ffd700;
+  border-radius:12px;
+  padding:12px;
+  text-align:center;
+  scroll-snap-align:start;
+}
+#kulzzyLeadership .klc-top-card img {
+  width:65px;
+  height:65px;
+  border-radius:50%;
+  object-fit:cover;
+  border:2px solid #ffd700;
+}
+#kulzzyLeadership .klc-top-card strong {
+  display:block;
+  margin-top:7px;
+  overflow-wrap:anywhere;
+}
+#kulzzyLeadership .klc-top-card small {
+  display:block;
+  color:#ffd700;
+  margin-top:5px;
+}
+#kulzzyLeadership .klc-admin {
+  display:none;
+  margin-top:18px;
+  padding:12px;
+  border:1px dashed #ffd700;
+  border-radius:11px;
+  background:#091a35;
+}
+#kulzzyLeadership .klc-admin button {
+  width:100%;
+  padding:11px;
+  margin:5px 0;
+  border:1px solid #ffd700;
+  border-radius:8px;
+  background:#14294d;
+  color:#ffd700;
+  font-weight:800;
+  cursor:pointer;
+}
+#kulzzyLeadership .klc-warning {
+  color:#ffcf70;
+  font-size:12px;
+  line-height:1.5;
+  margin-top:9px;
+}
+#kulzzyLeadership .klc-empty {
+  color:#b8c6dc;
+  text-align:center;
+  padding:15px 5px;
+  font-size:13px;
+}
+</style>
+
+<section id="kulzzyLeadership">
+
+  <div class="klc-heading">
+    🏆 KULZZY UNIVERSAL LEADERSHIP CHALLENGE
+  </div>
+
+  <div class="klc-motto">
+    One Community. One Voice. One Universal Leader.
+  </div>
+
+  <div id="klcDateStatus" class="klc-status">
+    Connecting to the leadership challenge...
+  </div>
+
+  <button id="klcJoinBtn" class="klc-action" type="button">
+    CONTEST FOR LEADERSHIP
+  </button>
+
+  <div id="klcMyStatus" class="klc-status">
+    Your contest status will appear here.
+  </div>
+
+  <div class="klc-section-title">
+    🌟 TOP THREE LEADERS
+  </div>
+
+  <div id="klcTopThree" class="klc-top-track">
+    <div class="klc-empty">Official leaders will appear here after results are published.</div>
+  </div>
+
+  <div class="klc-section-title">
+    🔎 FIND A CONTESTANT
+  </div>
+
+  <input
+    id="klcSearch"
+    class="klc-search"
+    type="search"
+    placeholder="Search by beginning of name or username..."
+    autocomplete="off"
+  >
+
+  <div class="klc-section-title">
+    ALL CONTESTANTS
+  </div>
+
+  <div id="klcContestants">
+    <div class="klc-empty">Loading contestants...</div>
+  </div>
+
+  <div class="klc-section-title">
+    🏅 OFFICIAL PUBLISHED RESULTS
+  </div>
+
+  <div id="klcResults">
+    <div class="klc-empty">Today's official results have not been published.</div>
+  </div>
+
+  <!-- ADMIN PANEL: VISIBLE ONLY TO AUTHORISED ADMIN -->
+  <div id="klcAdminPanel" class="klc-admin">
+    <div class="klc-heading">ADMIN CONTROL PANEL</div>
+
+    <div id="klcAdminStatus" class="klc-status">
+      Administrator access verified.
+    </div>
+
+    <button id="klcRefreshVotes" type="button">
+      VIEW PRIVATE VOTE TOTALS
+    </button>
+
+    <button id="klcPublishResults" type="button">
+      PUBLISH OFFICIAL RESULTS
+    </button>
+
+    <button id="klcCloseVoting" type="button">
+      CLOSE VOTING & PUBLISH FINAL RESULTS
+    </button>
+
+    <div id="klcAdminPreview"></div>
+
+    <div class="klc-warning">
+      Private vote records are for authorised administration only.
+      Public pages display published rankings and totals, not individual voter records.
+    </div>
+  </div>
+
+</section>
 <div class="community-layout">
 
 <div class="community-pair community-chat-pair">
