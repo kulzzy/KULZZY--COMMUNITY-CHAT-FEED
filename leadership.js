@@ -1,7 +1,9 @@
-/* =====================================================
+
+/* =========================================================
    KULZZY UNIVERSAL LEADERSHIP CHALLENGE
-   Separate module — reuses the existing Firebase app
-   ===================================================== */
+   COMPLETE LEADERSHIP SYSTEM
+   File: leadership.js
+   ========================================================= */
 
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
@@ -19,31 +21,77 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 
-/* =====================================================
-   1. CONFIGURATION
-   ===================================================== */
-
-const ADMIN_UID = "J5bniEYbkIaDLmn4RPBbAC7crf23";
+/* =========================================================
+   1. FIREBASE CONNECTION
+   Reuses the existing Kulzzy Community Firebase app
+   ========================================================= */
 
 const app = getApp();
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-const $ = id => document.getElementById(id);
+
+/* =========================================================
+   2. ADMIN CONFIGURATION
+   ========================================================= */
+
+const ADMIN_UID = "J5bniEYbkIaDLmn4RPBbAC7crf23";
+
+const PATHS = {
+  profiles: "profiles",
+  entries: "leadershipDailyEntries",
+  votes: "leadershipDailyVotes",
+  settings: "leadershipDailySettings",
+  results: "leadershipDailyResults"
+};
+
+
+/* =========================================================
+   3. APPLICATION STATE
+   ========================================================= */
 
 let currentUser = null;
 let currentDate = getNigeriaDate();
-let currentEntries = {};
-let currentResults = null;
-let currentClosed = false;
+
+let contestants = {};
+let publishedResults = null;
 let myVote = null;
-let myEntry = null;
+let votingClosed = false;
+
 let listenersStarted = false;
+let voteListenerStarted = false;
 
 
-/* =====================================================
-   2. NIGERIA DATE — AFRICA/LAGOS
-   ===================================================== */
+/* =========================================================
+   4. HTML ELEMENT HELPER
+   ========================================================= */
+
+function element(id) {
+  return document.getElementById(id);
+}
+
+function showMessage(id, message) {
+  const el = element(id);
+
+  if (el) {
+    el.textContent = message;
+  }
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[char]);
+}
+
+
+/* =========================================================
+   5. NIGERIA DATE
+   ========================================================= */
 
 function getNigeriaDate() {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -63,63 +111,32 @@ function getNigeriaDate() {
 }
 
 
-/* =====================================================
-   3. SAFE HTML OUTPUT
-   ===================================================== */
+/* =========================================================
+   6. DATABASE PATHS
+   ========================================================= */
 
-function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, character => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[character]);
+function dailyPath(path) {
+  return `${path}/${currentDate}`;
 }
 
 
-function safePhoto(photo) {
-  const value = String(photo || "").trim();
+/* =========================================================
+   7. STATUS DISPLAY
+   ========================================================= */
 
-  if (/^https:\/\/[^\s"'<>]+$/i.test(value)) {
-    return escapeHTML(value);
-  }
+function updateDateStatus() {
+  const date = currentDate.split("-").reverse().join("/");
 
-  return "";
+  showMessage(
+    "klcDateStatus",
+    `Nigeria date: ${date} | ${votingClosed ? "Voting closed" : "Voting open"}`
+  );
 }
 
 
-function showMessage(elementId, message) {
-  const element = $(elementId);
-
-  if (element) {
-    element.textContent = message;
-  }
-}
-
-
-/* =====================================================
-   4. TITLE AND POSITION LABELS
-   ===================================================== */
-
-function getPositionLabel(rank) {
-  if (rank === 1) return "🥇 Universal President of the Day";
-
-  if (rank === 2) return "🥈 Universal Vice President of the Day";
-
-  if (rank === 3) return "🥉 Universal Senate President of the Day";
-
-  if (rank >= 4 && rank <= 103) {
-    return `No. ${rank - 3} LGC`;
-  }
-
-  return "Regular Community Member";
-}
-
-
-/* =====================================================
-   5. PROFILE INFORMATION
-   ===================================================== */
+/* =========================================================
+   8. LOAD THE EXISTING COMMUNITY PROFILE
+   ========================================================= */
 
 async function getMyProfile() {
   if (!currentUser) {
@@ -127,289 +144,375 @@ async function getMyProfile() {
   }
 
   const snapshot = await get(
-    ref(db, "profiles/" + currentUser.uid)
+    ref(db, `${PATHS.profiles}/${currentUser.uid}`)
   );
 
   if (!snapshot.exists()) {
-    throw new Error("Your community profile was not found. Complete your profile first.");
+    throw new Error("Your community profile could not be found.");
   }
 
-  const profile = snapshot.val() || {};
+  const profile = snapshot.val();
 
-  const name = String(profile.name || "").trim();
-  const username = String(profile.username || "").trim();
-  const photo = String(profile.photo || "").trim();
-
-  if (!name) {
-    throw new Error("Your saved profile does not contain a display name.");
+  if (!profile.name || typeof profile.name !== "string") {
+    throw new Error("Your community profile has no valid name.");
   }
 
-  if (typeof profile.photo !== "string") {
-    throw new Error("Your saved profile photo field is missing. Please save your community profile again before joining.");
-  }
+  const username = typeof profile.username === "string"
+    ? profile.username
+    : "";
+
+  const photo = typeof profile.photo === "string"
+    ? profile.photo
+    : "";
 
   return {
     uid: currentUser.uid,
-    name,
+    name: profile.name,
     username,
     photo,
-    searchName: name.toLowerCase(),
-    searchUsername: username.toLowerCase(),
-    joinedAt: Date.now()
+    searchName: profile.name.trim().toLowerCase(),
+    searchUsername: (username || profile.name)
+      .trim()
+      .toLowerCase()
   };
 }
 
 
-/* =====================================================
-   6. JOIN THE DAILY CHALLENGE
-   ===================================================== */
+/* =========================================================
+   9. REGISTER AS A CONTESTANT
+   ========================================================= */
 
 async function joinChallenge() {
   if (!currentUser) {
-    showMessage("klcMyStatus", "Please sign in to your community account first.");
+    showMessage(
+      "klcMyStatus",
+      "Please sign in to your community account first."
+    );
     return;
   }
 
-  const button = $("klcJoinBtn");
-  button.disabled = true;
-  button.textContent = "JOINING...";
+  if (votingClosed) {
+    showMessage(
+      "klcMyStatus",
+      "Today's leadership voting has closed."
+    );
+    return;
+  }
+
+  const button = element("klcJoinBtn");
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "REGISTERING...";
+  }
 
   try {
     const profile = await getMyProfile();
 
     const entryRef = ref(
       db,
-      `leadershipDailyEntries/${currentDate}/${currentUser.uid}`
+      `${PATHS.entries}/${currentDate}/${currentUser.uid}`
     );
 
     const existing = await get(entryRef);
 
     if (existing.exists()) {
-      showMessage("klcMyStatus", "You have already joined today's leadership challenge.");
+      showMessage(
+        "klcMyStatus",
+        "You are already registered as a contestant today."
+      );
       return;
     }
 
-    if (currentClosed) {
-      throw new Error("Today's voting has been closed. You cannot join this challenge now.");
-    }
+    await set(entryRef, {
+      uid: profile.uid,
+      name: profile.name,
+      username: profile.username,
+      photo: profile.photo,
+      searchName: profile.searchName,
+      searchUsername: profile.searchUsername,
+      joinedAt: Date.now()
+    });
 
-    await set(entryRef, profile);
+    showMessage(
+      "klcMyStatus",
+      "Congratulations! You have successfully entered today's leadership challenge."
+    );
 
-    showMessage("klcMyStatus", "You have successfully entered today's leadership challenge!");
   } catch (error) {
-    showMessage("klcMyStatus", error.message || "Unable to join. Please try again.");
+    console.error("Leadership registration error:", error);
+
+    showMessage(
+      "klcMyStatus",
+      `Registration failed: ${error.message}`
+    );
+
   } finally {
-    button.disabled = false;
-    button.textContent = "CONTEST FOR LEADERSHIP";
+    if (button) {
+      button.disabled = false;
+      button.textContent = "CONTEST FOR LEADERSHIP";
+    }
   }
 }
 
 
-/* =====================================================
-   7. LOAD TODAY'S ENTRIES
-   ===================================================== */
+/* =========================================================
+   10. LOAD CONTESTANTS
+   ========================================================= */
 
 function startEntryListener() {
   onValue(
-    ref(db, "leadershipDailyEntries/" + currentDate),
+    ref(db, dailyPath(PATHS.entries)),
     snapshot => {
-      currentEntries = snapshot.val() || {};
-
-      if (currentUser) {
-        myEntry = currentEntries[currentUser.uid] || null;
-      }
+      contestants = snapshot.val() || {};
 
       renderContestants();
       renderMyStatus();
     },
     error => {
-      showMessage("klcContestants", "Unable to load contestants: " + error.message);
+      console.error("Contestant loading error:", error);
+
+      showMessage(
+        "klcContestants",
+        `Unable to load contestants: ${error.message}`
+      );
     }
   );
 }
 
 
-/* =====================================================
-   8. LOAD VOTING STATUS
-   ===================================================== */
+/* =========================================================
+   11. CHECK WHETHER VOTING IS CLOSED
+   ========================================================= */
 
 function startSettingsListener() {
   onValue(
-    ref(db, "leadershipDailySettings/" + currentDate + "/closed"),
+    ref(db, `${dailyPath(PATHS.settings)}/closed`),
     snapshot => {
-      currentClosed = snapshot.val() === true;
+      votingClosed = snapshot.val() === true;
+
+      updateDateStatus();
+      renderContestants();
+      renderMyStatus();
+    },
+    error => {
+      console.error("Voting settings error:", error);
 
       showMessage(
         "klcDateStatus",
-        currentClosed
-          ? `Nigeria date: ${currentDate} — VOTING CLOSED`
-          : `Nigeria date: ${currentDate} — VOTING OPEN`
+        `Unable to load voting status: ${error.message}`
       );
-
-      renderContestants();
-      renderMyStatus();
     }
   );
 }
 
 
-/* =====================================================
-   9. LOAD MY PRIVATE VOTE RECORD
-   ===================================================== */
+/* =========================================================
+   12. CHECK MY VOTE
+   ========================================================= */
 
 function startMyVoteListener() {
-  if (!currentUser) return;
-
-  onValue(
-    ref(db, `leadershipDailyVotes/${currentDate}/${currentUser.uid}`),
-    snapshot => {
-      myVote = snapshot.val() || null;
-      renderContestants();
-      renderMyStatus();
-    }
-  );
-}
-
-
-/* =====================================================
-   10. LOAD PUBLISHED RESULTS
-   ===================================================== */
-
-function startResultsListener() {
-  onValue(
-    ref(db, "leadershipDailyResults/" + currentDate),
-    snapshot => {
-      currentResults = snapshot.val() || null;
-      renderTopThree();
-      renderResults();
-    }
-  );
-}
-
-
-/* =====================================================
-   11. GET RANKED CONTESTANTS
-   ===================================================== */
-
-function getRankedContestants() {
-  if (!currentResults || !currentResults.rankings) {
-    return [];
-  }
-
-  return Object.values(currentResults.rankings)
-    .filter(item => item && item.uid)
-    .sort((a, b) => Number(a.rank) - Number(b.rank));
-}
-
-
-/* =====================================================
-   12. RENDER TOP THREE
-   ===================================================== */
-
-function renderTopThree() {
-  const container = $("klcTopThree");
-  const rankings = getRankedContestants().slice(0, 3);
-
-  if (!rankings.length) {
-    container.innerHTML =
-      '<div class="klc-empty">The top three leaders will appear after official results are published.</div>';
+  if (!currentUser || voteListenerStarted) {
     return;
   }
 
-  container.innerHTML = rankings.map(person => {
-    const photo = safePhoto(person.photo);
+  voteListenerStarted = true;
 
-    return `
-      <div class="klc-top-card">
-        ${photo ? `<img src="${photo}" alt="" loading="lazy">` : ""}
-        <strong>${escapeHTML(person.name)}</strong>
-        <small>${escapeHTML(getPositionLabel(Number(person.rank)))}</small>
-        <small>${Number(person.votes || 0)} votes</small>
-      </div>
-    `;
-  }).join("");
+  onValue(
+    ref(
+      db,
+      `${PATHS.votes}/${currentDate}/${currentUser.uid}`
+    ),
+    snapshot => {
+      myVote = snapshot.val() || null;
+
+      renderContestants();
+      renderMyStatus();
+    },
+    error => {
+      console.error("Vote status error:", error);
+
+      showMessage(
+        "klcMyStatus",
+        `Unable to check your vote: ${error.message}`
+      );
+    }
+  );
 }
 
 
-/* =====================================================
-   13. RENDER CONTESTANT LIST
-   ===================================================== */
+/* =========================================================
+   13. RENDER MY STATUS
+   ========================================================= */
 
-function renderContestants() {
-  const container = $("klcContestants");
+function renderMyStatus() {
+  if (!currentUser) {
+    showMessage(
+      "klcMyStatus",
+      "Sign in to enter the leadership challenge and vote."
+    );
+    return;
+  }
 
-  const search = String($("klcSearch").value || "")
+  const myEntry = contestants[currentUser.uid];
+
+  if (myEntry) {
+    showMessage(
+      "klcMyStatus",
+      "You are registered as a contestant today."
+    );
+  } else if (votingClosed) {
+    showMessage(
+      "klcMyStatus",
+      "Today's leadership challenge is closed."
+    );
+  } else {
+    showMessage(
+      "klcMyStatus",
+      "You have not entered today's leadership challenge."
+    );
+  }
+
+  const button = element("klcJoinBtn");
+
+  if (button) {
+    button.disabled = Boolean(myEntry) || votingClosed;
+
+    button.textContent = myEntry
+      ? "YOU ARE REGISTERED"
+      : votingClosed
+        ? "VOTING CLOSED"
+        : "CONTEST FOR LEADERSHIP";
+  }
+}
+
+
+/* =========================================================
+   14. CONTESTANT SEARCH
+   ========================================================= */
+
+function getFilteredContestants() {
+  const search = (element("klcSearch")?.value || "")
     .trim()
     .toLowerCase();
 
-  const contestants = Object.values(currentEntries);
+  return Object.values(contestants).filter(person => {
+    const name = String(person.name || "").toLowerCase();
+    const username = String(person.username || "").toLowerCase();
 
-  const filtered = contestants
-    .filter(person => {
-      const name = String(person.name || "").toLowerCase();
-      const username = String(person.username || "").toLowerCase();
+    return !search ||
+      name.startsWith(search) ||
+      username.startsWith(search);
+  });
+}
 
-      return !search ||
-        name.startsWith(search) ||
-        username.startsWith(search);
-    })
-    .sort((a, b) =>
-      String(a.name || "").localeCompare(String(b.name || ""))
-    );
 
-  if (!filtered.length) {
-    container.innerHTML =
-      '<div class="klc-empty">No matching contestants found.</div>';
+/* =========================================================
+   15. DISPLAY CONTESTANTS
+   ========================================================= */
+
+function renderContestants() {
+  const container = element("klcContestants");
+
+  if (!container) return;
+
+  const people = getFilteredContestants();
+
+  if (!people.length) {
+    container.textContent = Object.keys(contestants).length
+      ? "No contestant matches your search."
+      : "No contestants have registered today.";
+
     return;
   }
 
-  container.innerHTML = filtered.map(person => {
-    const photo = safePhoto(person.photo);
+  people.sort((a, b) =>
+    String(a.name || "").localeCompare(String(b.name || ""))
+  );
 
-    const alreadyVoted = Boolean(myVote);
+  container.innerHTML = people.map(person => {
+    const uid = escapeHTML(person.uid);
+    const name = escapeHTML(person.name);
+    const username = escapeHTML(person.username || "");
+    const photo = escapeHTML(person.photo || "");
+
     const isMe = currentUser && person.uid === currentUser.uid;
 
-    let buttonHTML = "";
+    const buttonDisabled =
+      !currentUser ||
+      isMe ||
+      Boolean(myVote) ||
+      votingClosed;
 
-    if (isMe) {
-      buttonHTML = '<span class="klc-small">Your entry</span>';
-    } else if (currentClosed) {
-      buttonHTML = '<span class="klc-small">Voting closed</span>';
-    } else if (!currentUser) {
-      buttonHTML = '<span class="klc-small">Sign in to vote</span>';
-    } else if (alreadyVoted) {
-      buttonHTML = '<span class="klc-small">Daily vote used</span>';
-    } else {
-      buttonHTML = `
-        <button
-          class="klc-vote"
-          type="button"
-          data-candidate="${escapeHTML(person.uid)}"
-        >VOTE</button>
-      `;
-    }
+    let buttonText = "VOTE";
+
+    if (isMe) buttonText = "YOUR PROFILE";
+    else if (myVote) buttonText = "VOTE USED";
+    else if (votingClosed) buttonText = "CLOSED";
+
+    const avatar = photo
+      ? `<img src="${photo}" alt="${name}" style="width:65px;height:65px;border-radius:50%;object-fit:cover;">`
+      : `<div style="width:65px;height:65px;border-radius:50%;background:#172a4a;display:flex;align-items:center;justify-content:center;font-size:25px;">👤</div>`;
 
     return `
-      <div class="klc-card">
-        ${photo ? `<img src="${photo}" alt="" loading="lazy">` : ""}
-        <div class="klc-person">
-          <div class="klc-name">${escapeHTML(person.name)}</div>
-          <div class="klc-small">${person.username ? "@" + escapeHTML(person.username) : ""}</div>
+      <div style="
+        display:flex;
+        align-items:center;
+        gap:12px;
+        background:#0b1b38;
+        border:1px solid #314365;
+        border-radius:12px;
+        padding:12px;
+        margin:10px 0;
+        color:white;
+      ">
+        ${avatar}
+
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:bold;">
+            ${name}
+          </div>
+
+          <div style="font-size:12px;color:#c4cce0;">
+            ${username ? "@" + username : "Community contestant"}
+          </div>
         </div>
-        ${buttonHTML}
+
+        <button
+          type="button"
+          data-vote-uid="${uid}"
+          ${buttonDisabled ? "disabled" : ""}
+          style="
+            background:${buttonDisabled ? "#555" : "#ffd700"};
+            color:${buttonDisabled ? "white" : "#06122a"};
+            border:0;
+            border-radius:8px;
+            padding:10px 13px;
+            font-weight:bold;
+          "
+        >
+          ${buttonText}
+        </button>
       </div>
     `;
   }).join("");
 }
 
 
-/* =====================================================
-   14. CAST ONE DAILY VOTE
-   ===================================================== */
+/* =========================================================
+   16. CAST A VOTE
+   One vote per registered account per day
+   No self-voting
+   ========================================================= */
 
 async function castVote(candidateUid) {
   if (!currentUser) {
-    alert("Please sign in first.");
+    alert("Please sign in before voting.");
+    return;
+  }
+
+  if (votingClosed) {
+    alert("Voting has closed.");
     return;
   }
 
@@ -418,39 +521,26 @@ async function castVote(candidateUid) {
     return;
   }
 
-  if (currentClosed) {
-    alert("Voting is closed.");
+  if (!contestants[candidateUid]) {
+    alert("This contestant is not registered today.");
     return;
   }
 
   if (myVote) {
-    alert("You have already used your vote for today.");
+    alert("You have already used your vote today.");
     return;
   }
-
-  if (!currentEntries[candidateUid]) {
-    alert("This contestant is no longer available.");
-    return;
-  }
-
-  const confirmed = confirm(
-    "Submit your one free vote for this contestant today?"
-  );
-
-  if (!confirmed) return;
 
   try {
     const voteRef = ref(
       db,
-      `leadershipDailyVotes/${currentDate}/${currentUser.uid}`
+      `${PATHS.votes}/${currentDate}/${currentUser.uid}`
     );
 
-    const existing = await get(voteRef);
+    const existingVote = await get(voteRef);
 
-    if (existing.exists()) {
-      myVote = existing.val();
-      renderContestants();
-      alert("Your daily vote has already been used.");
+    if (existingVote.exists()) {
+      alert("You have already voted today.");
       return;
     }
 
@@ -459,111 +549,200 @@ async function castVote(candidateUid) {
       createdAt: Date.now()
     });
 
-    alert("Your vote has been submitted successfully!");
+    alert("Your vote has been submitted successfully.");
+
   } catch (error) {
-    alert("Vote was not accepted: " + error.message);
+    console.error("Voting error:", error);
+
+    alert(`Your vote could not be submitted: ${error.message}`);
   }
 }
 
 
-/* =====================================================
-   15. SHOW MY STATUS
-   ===================================================== */
+/* =========================================================
+   17. LOAD PUBLISHED RESULTS
+   ========================================================= */
 
-function renderMyStatus() {
-  if (!currentUser) {
-    showMessage("klcMyStatus", "Sign in to join and vote in the challenge.");
-    return;
-  }
+function startResultsListener() {
+  onValue(
+    ref(db, dailyPath(PATHS.results)),
+    snapshot => {
+      publishedResults = snapshot.val() || null;
 
-  if (myEntry) {
-    if (myVote) {
-      showMessage("klcMyStatus", "You have entered and used your one free vote for today.");
-    } else if (currentClosed) {
-      showMessage("klcMyStatus", "You entered today's challenge. Voting is now closed.");
-    } else {
-      showMessage("klcMyStatus", "You are a contestant today. You may cast one free vote for another contestant.");
+      renderResults();
+      renderTopThree();
+    },
+    error => {
+      console.error("Results loading error:", error);
+
+      showMessage(
+        "klcResults",
+        `Unable to load published results: ${error.message}`
+      );
     }
-
-    $("klcJoinBtn").textContent = "YOU HAVE ENTERED TODAY";
-    $("klcJoinBtn").disabled = true;
-  } else if (currentClosed) {
-    showMessage("klcMyStatus", "Today's challenge is closed to new entries and votes.");
-    $("klcJoinBtn").disabled = true;
-    $("klcJoinBtn").textContent = "TODAY'S CHALLENGE CLOSED";
-  } else {
-    showMessage("klcMyStatus", "You have not entered today's challenge yet.");
-    $("klcJoinBtn").disabled = false;
-    $("klcJoinBtn").textContent = "CONTEST FOR LEADERSHIP";
-  }
-
-  renderContestants();
+  );
 }
 
 
-/* =====================================================
-   16. RENDER OFFICIAL RESULTS
-   ===================================================== */
+/* =========================================================
+   18. RANKING TITLES
+   ========================================================= */
 
-function renderResults() {
-  const container = $("klcResults");
-  const rankings = getRankedContestants();
+function getLeadershipTitle(rank) {
+  if (rank === 1) return "🥇 Universal President of the Day";
+  if (rank === 2) return "🥈 Universal Vice President of the Day";
+  if (rank === 3) return "🥉 Universal Senate President of the Day";
 
-  if (!currentResults || !rankings.length) {
-    container.innerHTML =
-      '<div class="klc-empty">Today's official results have not been published.</div>';
+  if (rank >= 4 && rank <= 103) {
+    return `LGC No. ${rank - 3}`;
+  }
+
+  return "Community Member";
+}
+
+
+/* =========================================================
+   19. DISPLAY TOP THREE
+   ========================================================= */
+
+function renderTopThree() {
+  const container = element("klcTopThree");
+
+  if (!container) return;
+
+  if (!publishedResults || !publishedResults.rankings) {
+    container.textContent =
+      "Official leaders will appear here after results are published.";
+
     return;
   }
 
-  const status = currentResults.closed
-    ? "FINAL RESULTS — VOTING CLOSED"
-    : "PUBLISHED RESULTS — VOTING OPEN";
+  const top = Object.values(publishedResults.rankings)
+    .filter(person => person.rank <= 3)
+    .sort((a, b) => a.rank - b.rank);
+
+  if (!top.length) {
+    container.textContent = "No official leaders have been published.";
+    return;
+  }
 
   container.innerHTML = `
-    <div class="klc-status">
-      ${escapeHTML(status)}
-    </div>
-    ${rankings.map(person => {
-      const photo = safePhoto(person.photo);
-      const rank = Number(person.rank);
+    <div style="
+      display:flex;
+      gap:12px;
+      overflow-x:auto;
+      padding:8px 0;
+    ">
+      ${top.map(person => `
+        <div style="
+          min-width:220px;
+          background:#0b1b38;
+          border:1px solid #ffd700;
+          border-radius:14px;
+          padding:15px;
+          color:white;
+          text-align:center;
+        ">
+          <div style="font-size:28px;">
+            ${person.rank === 1 ? "🥇" : person.rank === 2 ? "🥈" : "🥉"}
+          </div>
 
-      return `
-        <div class="klc-card">
-          ${photo ? `<img src="${photo}" alt="" loading="lazy">` : ""}
-          <div class="klc-person">
-            <div class="klc-name">
-              ${rank}. ${escapeHTML(person.name)}
-            </div>
-            <div class="klc-rank">
-              ${escapeHTML(getPositionLabel(rank))}
-            </div>
-            <div class="klc-small">
-              ${Number(person.votes || 0)} votes
-            </div>
+          <div style="font-weight:bold;">
+            ${escapeHTML(person.name)}
+          </div>
+
+          <div style="color:#ffd700;font-size:13px;margin-top:6px;">
+            ${escapeHTML(getLeadershipTitle(person.rank))}
+          </div>
+
+          <div style="margin-top:8px;font-size:12px;">
+            ${Number(person.votes || 0)} votes
           </div>
         </div>
-      `;
-    }).join("")}
+      `).join("")}
+    </div>
   `;
 }
 
 
-/* =====================================================
-   17. ADMIN — CALCULATE PRIVATE VOTE TOTALS
-   ===================================================== */
+/* =========================================================
+   20. DISPLAY OFFICIAL RESULTS
+   ========================================================= */
+
+function renderResults() {
+  const container = element("klcResults");
+
+  if (!container) return;
+
+  if (!publishedResults || !publishedResults.rankings) {
+    container.textContent =
+      "Today's official results have not been published.";
+
+    return;
+  }
+
+  const rankings = Object.values(publishedResults.rankings)
+    .sort((a, b) => a.rank - b.rank);
+
+  container.innerHTML = `
+    <div style="color:#ffd700;font-weight:bold;margin-bottom:12px;">
+      OFFICIAL LEADERSHIP RESULTS
+    </div>
+
+    ${rankings.map(person => `
+      <div style="
+        background:#0b1b38;
+        border:1px solid #314365;
+        border-radius:9px;
+        padding:11px;
+        margin:7px 0;
+        color:white;
+      ">
+        <strong>#${person.rank}</strong>
+        &nbsp; ${escapeHTML(person.name)}
+
+        <div style="font-size:12px;color:#ffd700;margin-top:4px;">
+          ${escapeHTML(getLeadershipTitle(person.rank))}
+        </div>
+
+        <div style="font-size:12px;color:#c4cce0;">
+          ${Number(person.votes || 0)} votes
+        </div>
+      </div>
+    `).join("")}
+  `;
+}
+
+
+/* =========================================================
+   21. ADMIN ACCESS
+   ========================================================= */
+
+function configureAdmin() {
+  const panel = element("klcAdminPanel");
+
+  if (panel) {
+    panel.style.display =
+      currentUser && currentUser.uid === ADMIN_UID
+        ? "block"
+        : "none";
+  }
+}
+
+
+/* =========================================================
+   22. ADMIN: CALCULATE VOTES AND RANKINGS
+   ========================================================= */
 
 async function calculateRankings() {
   if (!currentUser || currentUser.uid !== ADMIN_UID) {
     throw new Error("Administrator access required.");
   }
 
-  const entriesSnapshot = await get(
-    ref(db, "leadershipDailyEntries/" + currentDate)
-  );
-
-  const votesSnapshot = await get(
-    ref(db, "leadershipDailyVotes/" + currentDate)
-  );
+  const [entriesSnapshot, votesSnapshot] = await Promise.all([
+    get(ref(db, dailyPath(PATHS.entries))),
+    get(ref(db, dailyPath(PATHS.votes)))
+  ]);
 
   const entries = entriesSnapshot.val() || {};
   const votes = votesSnapshot.val() || {};
@@ -575,117 +754,114 @@ async function calculateRankings() {
   });
 
   Object.values(votes).forEach(vote => {
-    if (vote && totals[vote.candidateUid] !== undefined) {
+    if (
+      vote &&
+      vote.candidateUid &&
+      Object.prototype.hasOwnProperty.call(totals, vote.candidateUid)
+    ) {
       totals[vote.candidateUid]++;
     }
   });
 
-  const contestants = Object.values(entries).map(person => ({
-    uid: person.uid,
-    name: person.name || "",
-    username: person.username || "",
-    photo: person.photo || "",
-    votes: totals[person.uid] || 0
-  }));
-
-  contestants.sort((a, b) => {
-    if (b.votes !== a.votes) {
-      return b.votes - a.votes;
-    }
-
-    return String(a.name).localeCompare(String(b.name));
-  });
-
-  const rankings = {};
-
-  contestants.forEach((person, index) => {
-    const rank = index + 1;
-
-    rankings[person.uid] = {
+  const rankings = Object.entries(entries)
+    .map(([uid, person]) => ({
+      uid,
+      name: person.name || "",
+      username: person.username || "",
+      photo: person.photo || "",
+      votes: totals[uid] || 0
+    }))
+    .sort((a, b) =>
+      b.votes - a.votes ||
+      a.name.localeCompare(b.name)
+    )
+    .map((person, index) => ({
       ...person,
-      rank,
-      position: getPositionLabel(rank)
-    };
-  });
+      rank: index + 1,
+      title: getLeadershipTitle(index + 1)
+    }));
 
   return {
     date: currentDate,
-    closed: currentClosed,
+    closed: votingClosed,
     updatedAt: Date.now(),
-    totalContestants: contestants.length,
+    totalContestants: rankings.length,
     rankings
   };
 }
 
 
-/* =====================================================
-   18. ADMIN — DISPLAY PRIVATE TOTALS
-   ===================================================== */
+/* =========================================================
+   23. ADMIN: PREVIEW RANKINGS
+   ========================================================= */
 
-async function viewPrivateVotes() {
+async function previewAdminRankings() {
+  const preview = element("klcAdminPreview");
+
+  if (preview) {
+    preview.textContent = "Calculating rankings...";
+  }
+
   try {
     const result = await calculateRankings();
 
-    const contestants = Object.values(result.rankings);
-
-    $("klcAdminPreview").innerHTML = `
-      <div class="klc-section-title">
-        PRIVATE ADMIN VOTE TOTALS
-      </div>
-      ${contestants.map(person => `
-        <div class="klc-card">
-          <div class="klc-person">
-            <div class="klc-name">
-              ${person.rank}. ${escapeHTML(person.name)}
-            </div>
-            <div class="klc-small">
-              ${escapeHTML(person.username)}
-            </div>
+    if (preview) {
+      preview.innerHTML = result.rankings.map(person => `
+        <div style="padding:7px;border-bottom:1px solid #314365;">
+          #${person.rank} — ${escapeHTML(person.name)}
+          — ${person.votes} votes
+          <div style="color:#ffd700;font-size:12px;">
+            ${escapeHTML(person.title)}
           </div>
-          <strong style="color:#ffd700">
-            ${person.votes}
-          </strong>
         </div>
-      `).join("")}
-    `;
+      `).join("") || "No contestants yet.";
+    }
 
-    showMessage("klcAdminStatus", "Private vote totals loaded for " + currentDate);
   } catch (error) {
-    showMessage("klcAdminStatus", error.message);
+    console.error(error);
+
+    if (preview) {
+      preview.textContent = error.message;
+    }
   }
 }
 
 
-/* =====================================================
-   19. ADMIN — PUBLISH RESULTS
-   ===================================================== */
+/* =========================================================
+   24. ADMIN: PUBLISH RESULTS
+   ========================================================= */
 
 async function publishResults() {
-  try {
-    if (!currentUser || currentUser.uid !== ADMIN_UID) {
-      throw new Error("Administrator access required.");
-    }
+  if (!currentUser || currentUser.uid !== ADMIN_UID) {
+    alert("Administrator access required.");
+    return;
+  }
 
+  if (!confirm("Publish today's official leadership results?")) {
+    return;
+  }
+
+  try {
     const result = await calculateRankings();
 
     await set(
-      ref(db, "leadershipDailyResults/" + currentDate),
+      ref(db, dailyPath(PATHS.results)),
       result
     );
 
-    showMessage("klcAdminStatus", "Official results published successfully.");
+    alert("Official leadership results published successfully.");
 
-    alert("Official leadership results have been published.");
   } catch (error) {
-    showMessage("klcAdminStatus", "Publishing failed: " + error.message);
-    alert("Could not publish results: " + error.message);
+    console.error("Publish results error:", error);
+
+    alert(`Could not publish results: ${error.message}`);
   }
 }
 
 
-/* =====================================================
-   20. ADMIN — CLOSE VOTING AND PUBLISH FINAL RESULTS
-   ===================================================== */
+/* =========================================================
+   25. ADMIN: CLOSE VOTING PERMANENTLY
+   ========================================================= */
 
 async function closeVoting() {
   if (!currentUser || currentUser.uid !== ADMIN_UID) {
@@ -693,61 +869,93 @@ async function closeVoting() {
     return;
   }
 
-  if (currentClosed) {
-    alert("Voting is already closed for today.");
+  if (votingClosed) {
+    alert("Voting is already closed.");
     return;
   }
 
-  const confirmed = confirm(
-    "Close today's voting permanently and publish the final results? This action cannot be reversed from this panel."
-  );
-
-  if (!confirmed) return;
+  if (!confirm(
+    "Close today's voting permanently and publish the final results?"
+  )) {
+    return;
+  }
 
   try {
     await set(
-      ref(db, "leadershipDailySettings/" + currentDate + "/closed"),
+      ref(db, `${dailyPath(PATHS.settings)}/closed`),
       true
     );
 
-    currentClosed = true;
+    votingClosed = true;
 
     const result = await calculateRankings();
 
     result.closed = true;
-    result.updatedAt = Date.now();
 
     await set(
-      ref(db, "leadershipDailyResults/" + currentDate),
+      ref(db, dailyPath(PATHS.results)),
       result
     );
 
-    showMessage("klcAdminStatus", "Voting closed. Final results published.");
+    alert("Voting closed permanently. Final results published.");
 
-    alert("Voting has been closed and the final results are now published.");
   } catch (error) {
-    showMessage("klcAdminStatus", "Could not complete closure: " + error.message);
-    alert("Admin action failed: " + error.message);
+    console.error("Close voting error:", error);
+
+    alert(`Could not complete the closing process: ${error.message}`);
   }
 }
 
 
-/* =====================================================
-   21. ADMIN PANEL ACCESS
-   ===================================================== */
+/* =========================================================
+   26. ADMIN: REFRESH RANKINGS
+   ========================================================= */
 
-function configureAdmin() {
-  const isAdmin =
-    currentUser && currentUser.uid === ADMIN_UID;
-
-  $("klcAdminPanel").style.display =
-    isAdmin ? "block" : "none";
+async function refreshAdminVotes() {
+  await previewAdminRankings();
 }
 
 
-/* =====================================================
-   22. AUTHENTICATION
-   ===================================================== */
+/* =========================================================
+   27. BUTTON EVENTS
+   ========================================================= */
+
+element("klcJoinBtn")?.addEventListener("click", joinChallenge);
+
+element("klcSearch")?.addEventListener("input", renderContestants);
+
+element("klcContestants")?.addEventListener("click", event => {
+  const button = event.target.closest("[data-vote-uid]");
+
+  if (!button) return;
+
+  const uid = button.getAttribute("data-vote-uid");
+
+  if (uid) {
+    castVote(uid);
+  }
+});
+
+element("klcRefreshVotes")?.addEventListener(
+  "click",
+  refreshAdminVotes
+);
+
+element("klcPublishResults")?.addEventListener(
+  "click",
+  publishResults
+);
+
+element("klcCloseVoting")?.addEventListener(
+  "click",
+  closeVoting
+);
+
+
+/* =========================================================
+   28. AUTHENTICATION STARTUP
+   IMPORTANT: DATABASE LISTENERS START ONLY AFTER LOGIN
+   ========================================================= */
 
 onAuthStateChanged(auth, user => {
   currentUser = user || null;
@@ -755,45 +963,61 @@ onAuthStateChanged(auth, user => {
   configureAdmin();
 
   if (user) {
-    startMyVoteListener();
+    if (!listenersStarted) {
+      listenersStarted = true;
+
+      startEntryListener();
+      startSettingsListener();
+      startResultsListener();
+    }
+
+    if (!voteListenerStarted) {
+      startMyVoteListener();
+    }
+
+    showMessage(
+      "klcDateStatus",
+      "Your community account is connected. Loading the leadership challenge..."
+    );
+
+  } else {
+    showMessage(
+      "klcDateStatus",
+      "Please sign in to your community account to access the challenge."
+    );
+
+    showMessage(
+      "klcContestants",
+      "Sign in to load today's contestants."
+    );
+
+    showMessage(
+      "klcMyStatus",
+      "Sign in to enter and vote."
+    );
   }
 
   renderMyStatus();
-  renderContestants();
 });
 
 
-/* =====================================================
-   23. BUTTON EVENTS
-   ===================================================== */
+/* =========================================================
+   29. INITIAL DISPLAY
+   ========================================================= */
 
-$("klcJoinBtn").addEventListener("click", joinChallenge);
+updateDateStatus();
 
-$("klcSearch").addEventListener("input", renderContestants);
+showMessage(
+  "klcContestants",
+  "Waiting for your community account to connect..."
+);
 
-$("klcContestants").addEventListener("click", event => {
-  const button = event.target.closest("[data-candidate]");
+showMessage(
+  "klcResults",
+  "Loading official results..."
+);
 
-  if (!button) return;
-
-  castVote(button.dataset.candidate);
-});
-
-$("klcRefreshVotes").addEventListener("click", viewPrivateVotes);
-
-$("klcPublishResults").addEventListener("click", publishResults);
-
-$("klcCloseVoting").addEventListener("click", closeVoting);
-
-
-/* =====================================================
-   24. START DATABASE LISTENERS
-   ===================================================== */
-
-if (!listenersStarted) {
-  listenersStarted = true;
-
-  startEntryListener();
-  startSettingsListener();
-  startResultsListener();
-}
+showMessage(
+  "klcTopThree",
+  "Loading today's official leaders..."
+);
