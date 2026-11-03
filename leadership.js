@@ -1,4 +1,3 @@
-
 /* =========================================================
    KULZZY UNIVERSAL LEADERSHIP CHALLENGE
    COMPLETE LEADERSHIP SYSTEM
@@ -586,14 +585,23 @@ function startResultsListener() {
 
 /* =========================================================
    18. RANKING TITLES
+   3 TOP LEADERS + 1,000 LGC POSITIONS
    ========================================================= */
 
 function getLeadershipTitle(rank) {
-  if (rank === 1) return "🥇 Universal President of the Day";
-  if (rank === 2) return "🥈 Universal Vice President of the Day";
-  if (rank === 3) return "🥉 Universal Senate President of the Day";
+  if (rank === 1) {
+    return "🥇 Universal President of the Day";
+  }
 
-  if (rank >= 4 && rank <= 103) {
+  if (rank === 2) {
+    return "🥈 Universal Vice President of the Day";
+  }
+
+  if (rank === 3) {
+    return "🥉 Universal Senate President of the Day";
+  }
+
+  if (rank >= 4 && rank <= 1003) {
     return `LGC No. ${rank - 3}`;
   }
 
