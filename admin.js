@@ -1,4 +1,3 @@
-
 /* =====================================================
    KULZZY UNIVERSAL LEADERSHIP CHALLENGE
    PRIVATE ADMINISTRATION SYSTEM
@@ -134,7 +133,34 @@ function listenToVotingStatus() {
 
 
 /* =====================================================
-   6. CALCULATE OFFICIAL RANKINGS
+   6. OFFICIAL RANKING TITLES
+   3 TOP LEADERS + 1,000 LGC POSITIONS
+   ===================================================== */
+
+function getLeadershipTitle(rank) {
+
+  if (rank === 1) {
+    return "🥇 Universal President of the Day";
+  }
+
+  if (rank === 2) {
+    return "🥈 Universal Vice President of the Day";
+  }
+
+  if (rank === 3) {
+    return "🥉 Universal Senate President of the Day";
+  }
+
+  if (rank >= 4 && rank <= 1003) {
+    return `LGC No. ${rank - 3}`;
+  }
+
+  return "Community Member";
+}
+
+
+/* =====================================================
+   7. CALCULATE OFFICIAL RANKINGS
    ===================================================== */
 
 async function calculateRankings() {
@@ -176,20 +202,15 @@ async function calculateRankings() {
       b.votes - a.votes ||
       a.name.localeCompare(b.name)
     )
-    .map((person, index) => ({
-      ...person,
-      rank: index + 1,
-      title:
-        index === 0
-          ? "Universal President of the Day"
-          : index === 1
-            ? "Universal Vice President of the Day"
-            : index === 2
-              ? "Universal Senate President of the Day"
-              : index < 103
-                ? `LGC No. ${index - 2}`
-                : "Community Member"
-    }));
+    .map((person, index) => {
+      const rank = index + 1;
+
+      return {
+        ...person,
+        rank,
+        title: getLeadershipTitle(rank)
+      };
+    });
 
   latestRankings = rankings;
 
@@ -204,7 +225,7 @@ async function calculateRankings() {
 
 
 /* =====================================================
-   7. DISPLAY AGGREGATED VOTE TOTALS
+   8. DISPLAY AGGREGATED VOTE TOTALS
    Individual voter identities are never displayed.
    ===================================================== */
 
@@ -235,7 +256,7 @@ function displayRankings(rankings) {
 
 
 /* =====================================================
-   8. VIEW PRIVATE VOTE TOTALS
+   9. VIEW PRIVATE VOTE TOTALS
    ===================================================== */
 
 async function viewVotes() {
@@ -261,7 +282,7 @@ async function viewVotes() {
 
 
 /* =====================================================
-   9. PUBLISH OFFICIAL RESULTS
+   10. PUBLISH OFFICIAL RESULTS
    ===================================================== */
 
 async function publishResults() {
@@ -302,7 +323,7 @@ async function publishResults() {
 
 
 /* =====================================================
-   10. CLOSE VOTING AND PUBLISH FINAL RESULTS
+   11. CLOSE VOTING AND PUBLISH FINAL RESULTS
    ===================================================== */
 
 async function closeVoting() {
@@ -352,7 +373,7 @@ async function closeVoting() {
 
 
 /* =====================================================
-   11. BUTTON EVENTS
+   12. BUTTON EVENTS
    ===================================================== */
 
 el("viewVotes").addEventListener("click", viewVotes);
@@ -361,7 +382,7 @@ el("closeVoting").addEventListener("click", closeVoting);
 
 
 /* =====================================================
-   12. ADMIN AUTHENTICATION
+   13. ADMIN AUTHENTICATION
    ===================================================== */
 
 onAuthStateChanged(auth, user => {
