@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>Kulzzy Radio Community</title>
+<link rel="preload" as="image" href="./kulzzy-loading.jpg" fetchpriority="high">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://kulzzy-radio-chat-default-rtdb.europe-west1.firebasedatabase.app" crossorigin>
 
 <style>
 
@@ -2091,10 +2094,24 @@ nav, #navigation, #navigationBar, #bottomNavigation, .navigation-bar, .bottom-na
     overflow-x:hidden;
 }
 
+
+/* FAST STARTUP SPLASH */
+#kulzzyLoadingScreen{
+    position:fixed;inset:0;z-index:2147483646;
+    display:flex;align-items:center;justify-content:center;
+    background:#00101b url('./kulzzy-loading.jpg') center center / cover no-repeat;
+    opacity:1;visibility:visible;
+    transition:opacity .22s ease,visibility .22s ease;
+}
+#kulzzyLoadingScreen.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+#kulzzyLoadingScreen:after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.10);pointer-events:none}
+@media(prefers-reduced-motion:reduce){#kulzzyLoadingScreen{transition:none}}
+
 </style>
 </head>
 
 <body>
+<div id="kulzzyLoadingScreen" role="status" aria-label="Loading Kulzzy Radio Community"></div>
 
 <div id="authGate" class="auth-gate" style="display:none">
 <div class="auth-card">
@@ -3422,7 +3439,21 @@ const authError=$("authError");
 const authLogout=$("authLogout");
 let authMode="signup";
 
+let kulzzySplashFinished=false;
+function finishKulzzySplash(){
+    if(kulzzySplashFinished)return;
+    kulzzySplashFinished=true;
+    const splash=document.getElementById("kulzzyLoadingScreen");
+    if(splash){
+        splash.classList.add("is-hidden");
+        setTimeout(()=>splash.remove(),260);
+    }
+}
+// Safety release: never leave the visitor behind the splash indefinitely.
+setTimeout(finishKulzzySplash,12000);
+
 function showAuthGate(){
+    finishKulzzySplash();
     authGate.style.display="flex";
     if(appRoot) appRoot.style.display="none";
 }
@@ -3495,6 +3526,7 @@ authSubmit.addEventListener("click", async()=>{
         authPassword.value="";
         hideAuthGate();
         await loadFirebaseProfile();
+        finishKulzzySplash();
     }catch(error){
         console.error("Email authentication error:",error);
         const code=error.code||"";
@@ -3640,7 +3672,8 @@ if(monetizationModal) monetizationModal.addEventListener("click",event=>{
 
                 if(first){
                     first=false;
-                    await loadFirebaseProfile();
+                    try{await loadFirebaseProfile();}
+                    finally{finishKulzzySplash();}
                     resolve(user);
                 }
             }else{
@@ -5668,7 +5701,7 @@ async function openUploadedPictures(){
             const box=document.createElement("div");
             box.className="uploaded-picture-item";
             box.innerHTML=`
-                <img src="${esc(item.url)}" alt="Uploaded picture">
+                <img src="${esc(item.url)}" alt="Uploaded picture" loading="lazy" decoding="async">
                 <input class="uploaded-picture-check" type="checkbox"
                     data-post-id="${esc(item.postId)}"
                     data-image-index="${item.imageIndex}">
@@ -6455,7 +6488,7 @@ function renderGallery(images,postId){
     const cls=images.length===1?"one":images.length===2?"two":images.length===3?"three":"more";
     return `<div class="post-gallery ${cls}">${safe.slice(0,4).map((url,i)=>`
       <div class="gallery-item" data-post-id="${esc(postId)}" data-image-index="${i}">
-        <img src="${url}" alt="Community post picture ${i+1}">
+        <img src="${url}" alt="Community post picture ${i+1}" loading="lazy" decoding="async">
         ${i===3 && images.length>4?`<div class="gallery-more">+${images.length-3}</div>`:""}
       </div>`).join("")}</div>`;
 }
@@ -6616,7 +6649,7 @@ async function openSocialProfile(uid){
     }
     posts.forEach(post=>{
         const el=document.createElement("article");el.className="post";const images=getPostImages(post);const prof=getProfileData(post.uid,post);
-        el.innerHTML=`<div class="post-header"><img class="post-avatar" src="${esc(prof.photo)}"><div class="post-user"><div class="post-name">${esc(prof.name)}</div><div class="post-number">@${esc(prof.username)} · User #${esc(prof.userNumber)}</div><div class="post-time">${time(post.time)}</div></div></div>${post.caption?`<div class="post-caption">${esc(post.caption)}</div>`:""}<div class="post-image-wrap">${renderGallery(images,post.id)}</div><div class="post-actions"><button class="action-btn share-btn">↗️ Share</button><button class="action-btn repost-btn">🔁 Repost</button><div class="click-count">👆 ${post.clicks||0}</div></div>`;
+        el.innerHTML=`<div class="post-header"><img class="post-avatar" src="${esc(prof.photo)}" loading="lazy" decoding="async"><div class="post-user"><div class="post-name">${esc(prof.name)}</div><div class="post-number">@${esc(prof.username)} · User #${esc(prof.userNumber)}</div><div class="post-time">${time(post.time)}</div></div></div>${post.caption?`<div class="post-caption">${esc(post.caption)}</div>`:""}<div class="post-image-wrap">${renderGallery(images,post.id)}</div><div class="post-actions"><button class="action-btn share-btn">↗️ Share</button><button class="action-btn repost-btn">🔁 Repost</button><div class="click-count">👆 ${post.clicks||0}</div></div>`;
         el.querySelectorAll(".gallery-item").forEach((x,i)=>x.onclick=()=>clickPost(post.id,images[i]||images[0]));el.querySelector(".share-btn").onclick=()=>sharePost(post);el.querySelector(".repost-btn").onclick=()=>repostPost(post);socialProfilePosts.appendChild(el);
     });
 }
