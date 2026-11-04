@@ -32,7 +32,7 @@ body.image-viewer-open{
 }
 
 .app{
-    display:block;
+    display:none;
     width:100%;
     max-width:760px;
     margin:auto;
@@ -541,8 +541,12 @@ body.image-viewer-open{
 
 .post-preview-card{
     width:min(520px,100%);
-    max-height:calc(100vh - 32px);
-    overflow:auto;
+    max-height:calc(100dvh - 32px);
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
     background:#062d3e;
     border:1px solid #ffd000;
     border-radius:20px;
@@ -561,10 +565,17 @@ body.image-viewer-open{
 .post-preview-gallery{
     width:100%;
     display:grid;
-    grid-template-columns:repeat(3,1fr);
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    grid-auto-rows:min-content;
     gap:7px;
-    max-height:48vh;
-    overflow:auto;
+    height:52vh;
+    max-height:52vh;
+    min-height:180px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
     background:#001b2b;
     border:1px solid #075a78;
     border-radius:14px;
@@ -664,11 +675,14 @@ body.image-viewer-open{
     display:flex;
     flex-direction:column;
     align-items:center;
-    justify-content:center;
+    justify-content:flex-start;
     gap:10px;
     position:relative;
-    overflow:auto;
+    overflow-y:auto;
+    overflow-x:hidden;
     -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
 }
 
 .post-full-preview-close{
@@ -690,16 +704,18 @@ body.image-viewer-open{
 .post-full-preview-gallery{
     width:100%;
     display:flex;
+    flex:0 0 auto;
     flex-direction:column;
     align-items:center;
     gap:12px;
-    padding:45px 0 10px;
+    padding:58px 0 24px;
 }
 
 .post-full-preview-gallery img{
     width:auto;
+    flex:0 0 auto;
     max-width:100%;
-    max-height:82vh;
+    max-height:78vh;
     object-fit:contain;
     border-radius:10px;
     display:block;
@@ -978,9 +994,43 @@ body.image-viewer-open{
    NOTIFICATIONS
 ========================= */
 
+.notification-bell{
+    position:relative;
+    display:block;
+    flex:0 0 34px;
+    width:34px;
+    height:34px;
+    margin:0 auto 3px;
+    z-index:2147481000;
+    border:1px solid #ffd000;
+    border-radius:50%;
+    background:#062d3e;
+    color:#ffd000;
+    font-size:16px;
+    box-shadow:0 3px 10px rgba(0,0,0,.28);
+    cursor:pointer;
+}
+.notification-badge{
+    position:absolute;
+    top:-4px;
+    right:-4px;
+    min-width:19px;
+    height:19px;
+    padding:0 5px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#e11d48;
+    color:#fff;
+    border:1px solid #fff;
+    font-size:10px;
+    font-weight:bold;
+}
+.notification-badge[hidden]{display:none}
 .notification-panel{
     position:fixed;
-    top:15px;
+    top:66px;
     right:15px;
     width:min(340px,calc(100% - 30px));
     background:#062d3e;
@@ -1023,7 +1073,8 @@ body.image-viewer-open{
     position:fixed;
     inset:0;
     background:rgba(0,8,14,.94);
-    z-index:9000;
+    /* Must appear above the social profile modal so profile photos can open. */
+    z-index:2147483001 !important;
     display:none;
     align-items:center;
     justify-content:center;
@@ -1190,6 +1241,9 @@ body.image-viewer-open{
 .social-profile-modal.show{display:flex}.social-profile-card{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:#062d3e;border:1px solid #ffd000;border-radius:22px;padding:16px;box-shadow:0 15px 50px rgba(0,0,0,.55)}
 .social-profile-top{display:flex;align-items:center;gap:12px}.social-profile-avatar{width:78px;height:78px;border-radius:50%;object-fit:cover;border:3px solid #ffd000;background:#092331}.social-profile-info{flex:1;min-width:0}.social-profile-name{font-size:20px;font-weight:bold;color:#ffd000;word-break:break-word}.social-profile-number{font-size:12px;color:#9db0ba;margin-top:3px}.social-profile-close{border:0;background:#ffd000;color:#001b2b;width:42px;height:42px;border-radius:50%;font-size:25px;font-weight:bold;cursor:pointer}
 .social-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:14px 0}.social-stat{background:#073b50;border-radius:12px;text-align:center;padding:10px 5px}.social-stat strong{display:block;color:#ffd000;font-size:18px}.social-stat span{font-size:11px;color:#d7e2e7}.social-profile-actions{display:flex;gap:8px;margin-bottom:12px}.social-profile-actions button{flex:1;border:1px solid #ffd000;border-radius:12px;background:transparent;color:#ffd000;padding:10px;font-weight:bold;cursor:pointer}.social-profile-actions button.following{background:#ffd000;color:#001b2b}.profile-posts-title{font-weight:bold;color:#ffd000;margin:10px 0}.profile-post-list .post{margin-bottom:12px}
+.social-profile-pictures{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:8px 0 14px}
+.social-profile-picture{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid #075a78;background:#001b2b;cursor:pointer}
+.social-profile-pictures-empty{grid-column:1/-1;padding:18px;text-align:center;color:#9db0ba;font-size:13px}
 .post-user-click{cursor:pointer}.post-user-click:hover .post-name{text-decoration:underline}.post-number{font-size:10px;color:#9db0ba;margin-top:2px}
 .post-gallery{display:grid;gap:3px;background:#00131e}.post-gallery.one{grid-template-columns:1fr}.post-gallery.two{grid-template-columns:1fr 1fr}.post-gallery.three,.post-gallery.more{grid-template-columns:1fr 1fr}.gallery-item{position:relative;min-width:0;background:#00131e;cursor:pointer;overflow:hidden}.post-gallery.one .gallery-item{height:320px}.post-gallery.two .gallery-item,.post-gallery.three .gallery-item,.post-gallery.more .gallery-item{height:220px}.gallery-item img{width:100%;height:100%;display:block;object-fit:cover}.gallery-more{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.48);color:#fff;font-size:28px;font-weight:bold}.post-caption{padding:10px 14px;color:#fff;line-height:1.4;white-space:pre-wrap;word-break:break-word}.repost-note{padding:8px 14px;color:#38bdf8;font-size:12px;border-top:1px solid #075a78}
 .post-preview-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.post-preview-gallery img{width:100%;height:180px;object-fit:cover;border-radius:12px;background:#00131e}.post-preview-image{display:none!important}
@@ -1610,6 +1664,9 @@ body.image-viewer-open{
 .profile-menu-wrap{
     position:relative;
     flex:0 0 auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
 }
 
 .profile-menu-btn{
@@ -1894,8 +1951,12 @@ body.image-viewer-open{
 .uploaded-pictures-modal.show{display:flex;}
 .uploaded-pictures-card{
     width:min(900px,100%);
-    max-height:90vh;
-    overflow:auto;
+    height:auto;
+    max-height:90dvh;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
     background:#062d3e;
     border:1px solid #075a78;
     border-radius:16px;
@@ -1944,7 +2005,16 @@ body.image-viewer-open{
 .uploaded-pictures-grid{
     display:grid;
     grid-template-columns:repeat(6,minmax(0,1fr));
+    align-content:start;
     gap:7px;
+    max-height:65vh;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
+    padding:2px 3px 10px 0;
 }
 .uploaded-picture-item{
     position:relative;
@@ -2108,7 +2178,7 @@ nav, #navigation, #navigationBar, #bottomNavigation, .navigation-bar, .bottom-na
 </div>
 </div>
 
-<div class="app">
+<div class="app" style="display:none">
 
 <div class="intro">
 <strong>CELEBRATE, SELL &amp; NETWORK</strong>
@@ -2219,6 +2289,10 @@ class="profile-number">
 </div>
 
 <div class="profile-menu-wrap">
+
+<button id="notificationBell" class="notification-bell" type="button" aria-label="Open notifications">
+  🔔 <span id="notificationBadge" class="notification-badge" hidden>0</span>
+</button>
 
 <button
 id="profileMenuBtn"
@@ -2976,7 +3050,6 @@ class="uploaded-pictures-modal">
 
 
 <!-- NOTIFICATIONS -->
-
 <div
 id="notificationPanel"
 class="notification-panel">
@@ -3099,6 +3172,8 @@ import{
 /* =========================
    FIREBASE
 ========================= */
+
+const KULZZY_CENTRAL_LOGIN_URL="https://kulzzy.github.io/KULZZY-RADIO-LOGIN/";
 
 const firebaseConfig={
 
@@ -3270,6 +3345,9 @@ const viewerClickCount=
 
 const notificationList=
     $("notificationList");
+const notificationPanel=$("notificationPanel");
+const notificationBell=$("notificationBell");
+const notificationBadge=$("notificationBadge");
 
 const postPreview=
     $("postPreview");
@@ -3650,12 +3728,13 @@ if(monetizationModal) monetizationModal.addEventListener("click",event=>{
                 }
                 localStorage.removeItem("kulzzyCommunityLoggedIn");
                 startOwnProfileStatsListeners();
-                showAuthGate();
-
                 if(first){
                     first=false;
+                    const returnTo=encodeURIComponent(location.href.split("#")[0]);
+                    location.replace(KULZZY_CENTRAL_LOGIN_URL+"?return="+returnTo);
                     resolve(null);
                 }
+                return;
             }
         });
     });
@@ -5294,36 +5373,6 @@ function renderCommunityChat(snapshot,fromPrivateUpdate=false){
                 }
             );
 
-            const thread=
-                privateChatThreads[conversationId] || [];
-
-            if(thread.length){
-
-                const threadBox=
-                    document.createElement("div");
-
-                threadBox.className=
-                    "private-chat-thread";
-
-                threadBox.innerHTML=
-                    thread.map(item=>`
-                        <div class="private-chat-status">
-                            <strong>${
-                                item.senderUid===userId
-                                    ? "You"
-                                    : esc(
-                                        item.senderName ||
-                                        name
-                                      )
-                            }:</strong>
-                            ${esc(item.text)}
-                        </div>
-                    `).join("");
-
-                div.querySelector(
-                    ".community-chat-body"
-                ).appendChild(threadBox);
-            }
         }
 
         communityChatList.appendChild(div);
@@ -5668,7 +5717,7 @@ async function openUploadedPictures(){
             const box=document.createElement("div");
             box.className="uploaded-picture-item";
             box.innerHTML=`
-                <img src="${esc(item.url)}" alt="Uploaded picture" loading="lazy" decoding="async">
+                <img src="${esc(item.url)}" alt="Uploaded picture">
                 <input class="uploaded-picture-check" type="checkbox"
                     data-post-id="${esc(item.postId)}"
                     data-image-index="${item.imageIndex}">
@@ -6455,7 +6504,7 @@ function renderGallery(images,postId){
     const cls=images.length===1?"one":images.length===2?"two":images.length===3?"three":"more";
     return `<div class="post-gallery ${cls}">${safe.slice(0,4).map((url,i)=>`
       <div class="gallery-item" data-post-id="${esc(postId)}" data-image-index="${i}">
-        <img src="${url}" alt="Community post picture ${i+1}" loading="lazy" decoding="async">
+        <img src="${url}" alt="Community post picture ${i+1}">
         ${i===3 && images.length>4?`<div class="gallery-more">+${images.length-3}</div>`:""}
       </div>`).join("")}</div>`;
 }
@@ -6503,7 +6552,7 @@ function renderPosts(snapshot){
           <div class="post-header">
             <div class="post-user-click post-user" role="button" tabindex="0">
               <div style="display:flex;align-items:center;gap:10px">
-                <img class="post-avatar" src="${esc(profile.photo)}" alt="${esc(profile.name)}" loading="lazy" decoding="async">
+                <img class="post-avatar" src="${esc(profile.photo)}" alt="${esc(profile.name)}">
                 <div style="min-width:0">
                   <div class="post-name">${esc(profile.name)}</div>
                   <div class="post-number">@${esc(profile.username)} · User #${esc(profile.userNumber)}</div>
@@ -6576,7 +6625,21 @@ async function getFollowingCount(uid){try{const s=await get(ref(db,`following/${
 async function setFollowingRecord(owner,following){
     if(!userId||!owner||owner===userId)return;
     const a=ref(db,`following/${userId}/${owner}`), b=ref(db,`followers/${owner}/${userId}`);
-    if(following){const data={uid:owner,time:Date.now()};await set(a,data);await set(b,{uid:userId,name:savedProfile?.name||"Listener",time:Date.now()});}
+    if(following){
+        const now=Date.now();
+        const followerName=savedProfile?.name||"Listener";
+        const data={uid:owner,time:now};
+        await set(a,data);
+        await set(b,{uid:userId,name:followerName,time:now});
+        try{
+            await set(push(ref(db,"notifications/"+owner)),{
+                type:"follow",uid:owner,fromUid:userId,name:followerName,
+                text:followerName+" followed you.",time:now
+            });
+        }catch(notificationError){
+            console.warn("Follow notification could not be saved:",notificationError);
+        }
+    }
     else{await set(a,null);await set(b,null);}
 }
 
@@ -6592,7 +6655,7 @@ function searchUsers(){
     if(!matches.length){userSearchResults.innerHTML=`<div class="community-empty">No user found.</div>`;userSearchResults.classList.add("show");return;}
     matches.forEach(([uid,p])=>{
         const div=document.createElement("div");div.className="user-result";
-        div.innerHTML=`<img class="user-result-avatar" src="${esc(p.photo||DEFAULT_PROFILE)}" alt="${esc(p.name||"Listener")}" loading="lazy" decoding="async"><div class="user-result-main"><div class="user-result-name">${esc(p.name||"Listener")}</div><div class="user-result-number">@${esc(normalizeUsername(p.username||("user"+getUserNumber(uid))))} · User #${esc(p.userNumber||getUserNumber(uid))}</div></div>`;
+        div.innerHTML=`<img class="user-result-avatar" src="${esc(p.photo||DEFAULT_PROFILE)}" alt="${esc(p.name||"Listener")}"><div class="user-result-main"><div class="user-result-name">${esc(p.name||"Listener")}</div><div class="user-result-number">@${esc(normalizeUsername(p.username||("user"+getUserNumber(uid))))} · User #${esc(p.userNumber||getUserNumber(uid))}</div></div>`;
         div.onclick=()=>{userSearchResults.classList.remove("show");openSocialProfile(uid);}; userSearchResults.appendChild(div);
     });
     userSearchResults.classList.add("show");
@@ -6616,7 +6679,7 @@ async function openSocialProfile(uid){
     }
     posts.forEach(post=>{
         const el=document.createElement("article");el.className="post";const images=getPostImages(post);const prof=getProfileData(post.uid,post);
-        el.innerHTML=`<div class="post-header"><img class="post-avatar" src="${esc(prof.photo)}" loading="lazy" decoding="async"><div class="post-user"><div class="post-name">${esc(prof.name)}</div><div class="post-number">@${esc(prof.username)} · User #${esc(prof.userNumber)}</div><div class="post-time">${time(post.time)}</div></div></div>${post.caption?`<div class="post-caption">${esc(post.caption)}</div>`:""}<div class="post-image-wrap">${renderGallery(images,post.id)}</div><div class="post-actions"><button class="action-btn share-btn">↗️ Share</button><button class="action-btn repost-btn">🔁 Repost</button><div class="click-count">👆 ${post.clicks||0}</div></div>`;
+        el.innerHTML=`<div class="post-header"><img class="post-avatar" src="${esc(prof.photo)}"><div class="post-user"><div class="post-name">${esc(prof.name)}</div><div class="post-number">@${esc(prof.username)} · User #${esc(prof.userNumber)}</div><div class="post-time">${time(post.time)}</div></div></div>${post.caption?`<div class="post-caption">${esc(post.caption)}</div>`:""}<div class="post-image-wrap">${renderGallery(images,post.id)}</div><div class="post-actions"><button class="action-btn share-btn">↗️ Share</button><button class="action-btn repost-btn">🔁 Repost</button><div class="click-count">👆 ${post.clicks||0}</div></div>`;
         el.querySelectorAll(".gallery-item").forEach((x,i)=>x.onclick=()=>clickPost(post.id,images[i]||images[0]));el.querySelector(".share-btn").onclick=()=>sharePost(post);el.querySelector(".repost-btn").onclick=()=>repostPost(post);socialProfilePosts.appendChild(el);
     });
 }
@@ -6661,6 +6724,61 @@ onValue(
 ========================= */
 
 let stopPrivateNotificationsListener = null;
+let latestMemberNotifications=[];
+let notificationAudioContext=null;
+let notificationSoundReady=false;
+function unlockNotificationSound(){
+    try{
+        const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+        if(!AudioContextClass)return;
+        if(!notificationAudioContext)notificationAudioContext=new AudioContextClass();
+        if(notificationAudioContext.state==="suspended")notificationAudioContext.resume();
+        notificationSoundReady=true;
+    }catch(e){console.warn("Notification sound unavailable:",e);}
+}
+function playNotificationSound(){
+    if(!notificationSoundReady||!notificationAudioContext)return;
+    try{
+        const ctx=notificationAudioContext;
+        if(ctx.state==="suspended")ctx.resume();
+        const now=ctx.currentTime;
+        [880,1175].forEach((frequency,index)=>{
+            const osc=ctx.createOscillator();
+            const gain=ctx.createGain();
+            osc.type="sine";
+            osc.frequency.setValueAtTime(frequency,now+index*0.13);
+            gain.gain.setValueAtTime(0.0001,now+index*0.13);
+            gain.gain.exponentialRampToValueAtTime(0.12,now+index*0.13+0.025);
+            gain.gain.exponentialRampToValueAtTime(0.0001,now+index*0.13+0.22);
+            osc.connect(gain);gain.connect(ctx.destination);
+            osc.start(now+index*0.13);osc.stop(now+index*0.13+0.23);
+        });
+    }catch(e){console.warn("Notification sound failed:",e);}
+}
+document.addEventListener("pointerdown",unlockNotificationSound,{once:true,passive:true});
+document.addEventListener("keydown",unlockNotificationSound,{once:true});
+
+function setNotificationBadge(count){
+    if(!notificationBadge)return;
+    const n=Math.max(0,Number(count)||0);
+    notificationBadge.textContent=n>99?"99+":String(n);
+    notificationBadge.hidden=n===0;
+}
+
+if(notificationBell){
+    notificationBell.addEventListener("click",()=>{
+        notificationPanel.classList.toggle("show");
+        if(notificationPanel.classList.contains("show"))setNotificationBadge(0);
+    });
+}
+document.addEventListener("click",event=>{
+    if(notificationPanel && notificationBell &&
+       notificationPanel.classList.contains("show") &&
+       !notificationPanel.contains(event.target) &&
+       !notificationBell.contains(event.target)){
+        notificationPanel.classList.remove("show");
+    }
+});
 
 function startPrivateNotificationsListener(uid) {
     if (stopPrivateNotificationsListener) {
@@ -6668,8 +6786,11 @@ function startPrivateNotificationsListener(uid) {
         stopPrivateNotificationsListener = null;
     }
 
+    startPrivateNotificationsListener._seenIds=null;
     if (!uid) {
         notificationList.innerHTML = "";
+        latestMemberNotifications=[];
+        setNotificationBadge(0);
         return;
     }
 
@@ -6688,14 +6809,25 @@ function startPrivateNotificationsListener(uid) {
             }
 
             const items = [];
-
+            const currentNotificationIds=[];
             snapshot.forEach(child => {
                 items.push(child.val());
+                currentNotificationIds.push(child.key);
             });
+            if(!startPrivateNotificationsListener._seenIds){
+                startPrivateNotificationsListener._seenIds=new Set(currentNotificationIds);
+            }else{
+                const seen=startPrivateNotificationsListener._seenIds;
+                const hasNew=currentNotificationIds.some(id=>!seen.has(id));
+                if(hasNew)playNotificationSound();
+                currentNotificationIds.forEach(id=>seen.add(id));
+            }
 
             items.sort(
                 (a, b) => (b.time || 0) - (a.time || 0)
             );
+            latestMemberNotifications=items;
+            setNotificationBadge(notificationPanel.classList.contains("show")?0:items.length);
 
             items.slice(0, 30).forEach(item => {
                 const div = document.createElement("div");
@@ -6706,6 +6838,7 @@ function startPrivateNotificationsListener(uid) {
         },
         error => {
             console.error("Notification read error:", error);
+            setNotificationBadge(0);
             notificationList.innerHTML = `
                 <div class="notification-item">
                     Unable to load notifications.
