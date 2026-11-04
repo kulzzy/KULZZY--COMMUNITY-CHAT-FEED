@@ -3212,6 +3212,23 @@ const auth=
 
 
 /* =========================
+   GLOBAL NOTIFICATIONS DATABASE
+========================= */
+
+const globalNotificationsConfig={
+    apiKey:"AIzaSyCqMzCkTvQQOYrWZKYRkH553IPMmNYYhIA",
+    authDomain:"kulzzy-radio-notifications.firebaseapp.com",
+    databaseURL:"https://kulzzy-radio-notifications-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId:"kulzzy-radio-notifications",
+    storageBucket:"kulzzy-radio-notifications.firebasestorage.app",
+    messagingSenderId:"477307840798",
+    appId:"1:477307840798:web:7d0ee08c263dd79be0c10f"
+};
+const globalNotificationsApp=initializeApp(globalNotificationsConfig,"kulzzyGlobalNotifications");
+const globalNotificationsDb=getDatabase(globalNotificationsApp);
+
+
+/* =========================
    CLOUDINARY
 ========================= */
 
@@ -6768,7 +6785,7 @@ function setNotificationBadge(count){
 if(notificationBell){
     notificationBell.addEventListener("click",()=>{
         notificationPanel.classList.toggle("show");
-        if(notificationPanel.classList.contains("show"))setNotificationBadge(0);
+        if(notificationPanel.classList.contains("show"))markVisibleNotificationsAsRead();
     });
 }
 document.addEventListener("click",event=>{
@@ -6780,72 +6797,133 @@ document.addEventListener("click",event=>{
     }
 });
 
-function startPrivateNotificationsListener(uid) {
-    if (stopPrivateNotificationsListener) {
-        stopPrivateNotificationsListener();
-        stopPrivateNotificationsListener = null;
-    }
+let privateNotificationItems=[];
+let globalNotificationItems=[];
+let notificationReadStatus={};
+let stopReadStatusListener=null;
+let stopGlobalNotificationsListener=null;
+let notificationSoundSeen={private:null,global:null};
 
-    startPrivateNotificationsListener._seenIds=null;
-    if (!uid) {
-        notificationList.innerHTML = "";
+function notificationTimestamp(item){
+    const raw=item?.time ?? item?.createdAt ?? item?.publishedAt ?? item?.timestamp ?? 0;
+    if(typeof raw==="number")return raw;
+    const parsed=Date.parse(raw);
+    return Number.isFinite(parsed)?parsed:0;
+}
+function notificationText(item){
+    const title=String(item?.title || item?.heading || "").trim();
+    const body=String(item?.text || item?.message || item?.body || item?.content || item?.description || "").trim();
+    if(title && body && title!==body)return title+" — "+body;
+    return title || body || "New Kulzzy Radio announcement.";
+}
+function updateNotificationSound(source,ids){
+    if(notificationSoundSeen[source]===null){
+        notificationSoundSeen[source]=new Set(ids);
+        return;
+    }
+    const seen=notificationSoundSeen[source];
+    if(ids.some(id=>!seen.has(id)))playNotificationSound();
+    ids.forEach(id=>seen.add(id));
+}
+function getCombinedNotifications(){
+    const a=privateNotificationItems.map(item=>({...item,notificationKey:"private_"+item.id,notificationSource:"private"}));
+    const b=globalNotificationItems.map(item=>({...item,notificationKey:"global_"+item.id,notificationSource:"global"}));
+    return a.concat(b).sort((x,y)=>notificationTimestamp(y)-notificationTimestamp(x));
+}
+function renderCombinedNotifications(){
+    if(!notificationList)return;
+    const items=getCombinedNotifications();
+    notificationList.innerHTML="";
+    if(!items.length){
+        notificationList.innerHTML='<div class="notification-item">No notifications.</div>';
         latestMemberNotifications=[];
         setNotificationBadge(0);
         return;
     }
-
-    stopPrivateNotificationsListener = onValue(
-        ref(db, "notifications/" + uid),
-        snapshot => {
-            notificationList.innerHTML = "";
-
-            if (!snapshot.exists()) {
-                notificationList.innerHTML = `
-                    <div class="notification-item">
-                        No notifications.
-                    </div>
-                `;
-                return;
-            }
-
-            const items = [];
-            const currentNotificationIds=[];
-            snapshot.forEach(child => {
-                items.push(child.val());
-                currentNotificationIds.push(child.key);
-            });
-            if(!startPrivateNotificationsListener._seenIds){
-                startPrivateNotificationsListener._seenIds=new Set(currentNotificationIds);
-            }else{
-                const seen=startPrivateNotificationsListener._seenIds;
-                const hasNew=currentNotificationIds.some(id=>!seen.has(id));
-                if(hasNew)playNotificationSound();
-                currentNotificationIds.forEach(id=>seen.add(id));
-            }
-
-            items.sort(
-                (a, b) => (b.time || 0) - (a.time || 0)
-            );
-            latestMemberNotifications=items;
-            setNotificationBadge(notificationPanel.classList.contains("show")?0:items.length);
-
-            items.slice(0, 30).forEach(item => {
-                const div = document.createElement("div");
-                div.className = "notification-item";
-                div.textContent = item.text || "New activity.";
-                notificationList.appendChild(div);
-            });
-        },
-        error => {
-            console.error("Notification read error:", error);
-            setNotificationBadge(0);
-            notificationList.innerHTML = `
-                <div class="notification-item">
-                    Unable to load notifications.
-                </div>
-            `;
+    latestMemberNotifications=items;
+    items.slice(0,50).forEach(item=>{
+        const read=!!notificationReadStatus[item.notificationKey];
+        const div=document.createElement("div");
+        div.className="notification-item"+(read?" notification-read":" notification-unread");
+        if(item.notificationSource==="global"){
+            const label=document.createElement("div");
+            label.textContent="KULZZY RADIO";
+            label.style.cssText="color:#ffd000;font-size:10px;font-weight:bold;margin-bottom:4px;letter-spacing:.5px";
+            div.appendChild(label);
         }
-    );
+        const message=document.createElement("div");
+        message.textContent=notificationText(item);
+        div.appendChild(message);
+        if(!read){
+            div.style.borderLeft="3px solid #ffd000";
+            div.style.background="rgba(255,208,0,.07)";
+        }else div.style.opacity=".72";
+        notificationList.appendChild(div);
+    });
+    const unread=items.reduce((n,item)=>n+(!notificationReadStatus[item.notificationKey]?1:0),0);
+    setNotificationBadge(notificationPanel.classList.contains("show")?0:unread);
+}
+async function markVisibleNotificationsAsRead(){
+    if(!userId || !auth.currentUser)return;
+    const changes={};
+    getCombinedNotifications().forEach(item=>{
+        if(!notificationReadStatus[item.notificationKey])changes[item.notificationKey]=true;
+    });
+    if(!Object.keys(changes).length){setNotificationBadge(0);return;}
+    notificationReadStatus={...notificationReadStatus,...changes};
+    renderCombinedNotifications();
+    try{
+        await update(ref(db,"notificationReadStatus/"+userId),changes);
+    }catch(error){console.error("Could not save notification read status:",error);}
+}
+function startPrivateNotificationsListener(uid){
+    if(stopPrivateNotificationsListener){stopPrivateNotificationsListener();stopPrivateNotificationsListener=null;}
+    if(stopReadStatusListener){stopReadStatusListener();stopReadStatusListener=null;}
+    if(stopGlobalNotificationsListener){stopGlobalNotificationsListener();stopGlobalNotificationsListener=null;}
+    privateNotificationItems=[];
+    globalNotificationItems=[];
+    notificationReadStatus={};
+    notificationSoundSeen={private:null,global:null};
+    if(!uid){
+        notificationList.innerHTML="";
+        latestMemberNotifications=[];
+        setNotificationBadge(0);
+        return;
+    }
+    stopReadStatusListener=onValue(ref(db,"notificationReadStatus/"+uid),snapshot=>{
+        notificationReadStatus=snapshot.exists()?(snapshot.val()||{}):{};
+        renderCombinedNotifications();
+    },error=>console.error("Notification read-status error:",error));
+
+    // Preserve the existing private notification source and permissions.
+    stopPrivateNotificationsListener=onValue(ref(db,"notifications/"+uid),snapshot=>{
+        const items=[],ids=[];
+        if(snapshot.exists())snapshot.forEach(child=>{
+            items.push({id:child.key,...(child.val()||{})});
+            ids.push(child.key);
+        });
+        updateNotificationSound("private",ids);
+        privateNotificationItems=items;
+        renderCombinedNotifications();
+    },error=>console.error("Private notification read error:",error));
+
+    // Read admin-published global announcements from their separate public database.
+    stopGlobalNotificationsListener=onValue(ref(globalNotificationsDb,"publishedNotifications"),snapshot=>{
+        const items=[],ids=[];
+        if(snapshot.exists())snapshot.forEach(child=>{
+            const value=child.val()||{};
+            if(value && value.deleted!==true && value.active!==false){
+                items.push({id:child.key,...value});
+                ids.push(child.key);
+            }
+        });
+        updateNotificationSound("global",ids);
+        globalNotificationItems=items;
+        renderCombinedNotifications();
+    },error=>{
+        console.error("Global announcement read error:",error);
+        renderCombinedNotifications();
+    });
 }
 
 
