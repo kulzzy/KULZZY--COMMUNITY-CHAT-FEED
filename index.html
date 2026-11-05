@@ -3157,6 +3157,9 @@ import{
     get,
     update,
     onValue,
+    query,
+    orderByChild,
+    limitToLast,
     runTransaction
 }from"https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -3208,6 +3211,19 @@ const app=
 
 const db=
     getDatabase(app);
+
+/* Separate public database used by the Global Notifications admin. */
+const globalNotificationsConfig={
+    apiKey:"AIzaSyCqMzCkTvQQOYrWZKYRkH553IPMmNYYhIA",
+    authDomain:"kulzzy-radio-notifications.firebaseapp.com",
+    databaseURL:"https://kulzzy-radio-notifications-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId:"kulzzy-radio-notifications",
+    storageBucket:"kulzzy-radio-notifications.firebasestorage.app",
+    messagingSenderId:"477307840798",
+    appId:"1:477307840798:web:7d0ee08c263dd79be0c10f"
+};
+const globalNotificationsApp=initializeApp(globalNotificationsConfig,"kulzzyGlobalNotifications");
+const globalNotificationsDb=getDatabase(globalNotificationsApp);
 
 const auth=
     getAuth(app);
@@ -3710,7 +3726,7 @@ function startAuthListener(){
                 setStableUserId(user.uid);
                 localStorage.setItem("kulzzyCommunityLoggedIn","1");
                 startPrivateNotificationsListener(user.uid);
-                startGeneralNotificationsListener(user.uid);
+                
                 startOwnProfileStatsListeners();
 
 
@@ -3727,10 +3743,7 @@ function startAuthListener(){
                     resolve(user);
                 }
             }else{
-                if (stopPrivateNotificationsListener) {
-                    stopPrivateNotificationsListener();
-                    stopPrivateNotificationsListener = null;
-                }
+                startPrivateNotificationsListener(null);
                 localStorage.removeItem("kulzzyCommunityLoggedIn");
                 startOwnProfileStatsListeners();
                 if(first){
@@ -6418,7 +6431,7 @@ function renderPosts(snapshot){
     snapshot.forEach(child=>{const data=child.val()||{};if(data && (data.image||data.images))posts.push({id:child.key,...data});});
     posts.sort((a,b)=>(b.time||0)-(a.time||0));
     if(!posts.length){feed.appendChild(emptyFeed);return;}
-    const visiblePosts=showAllPosts?posts:posts.slice(0,5);
+    const visiblePosts=showAllPosts?posts:posts.slice(0,6);
     visiblePosts.forEach(post=>{
         const article=document.createElement("article"); article.className="post"; article.id="post-"+post.id;
         const profile=getProfileData(post.uid,post); const images=getPostImages(post);
@@ -6478,10 +6491,10 @@ function renderPosts(snapshot){
         comments(post.id,commentList);
         feed.appendChild(article);
     });
-    viewAllPostsBtn.textContent=posts.length>5?(showAllPosts?"Show latest":"View all posts"):"View all posts";
+    viewAllPostsBtn.textContent=allPostsLoaded?"Show latest 6 posts":"Load older posts";
 }
 
-viewAllPostsBtn.onclick=()=>{showAllPosts=!showAllPosts;if(latestPostsSnapshot)renderPosts(latestPostsSnapshot);};
+viewAllPostsBtn.onclick=loadAllCommunityPosts;
 
 /* =========================
    USER SEARCH + SOCIAL PROFILE
@@ -6613,218 +6626,184 @@ async function openSocialProfile(uid){
 socialProfileClose.onclick=()=>socialProfileModal.classList.remove("show"); socialProfileModal.onclick=e=>{if(e.target===socialProfileModal)socialProfileModal.classList.remove("show");};
 
 /* =========================
-   REALTIME POSTS
+   REALTIME POSTS — LIGHT INITIAL LOAD
 ========================= */
+let allPostsLoaded=false;
+let initialPostsCache=null;
+const initialPostsQuery=query(ref(db,"communityPosts"),orderByChild("time"),limitToLast(6));
+onValue(initialPostsQuery,snapshot=>{
+    initialPostsCache=snapshot;
+    latestPostsSnapshot=snapshot;
+    allPostsLoaded=false;
+    showAllPosts=false;
+    renderPosts(snapshot);
+},error=>{
+    console.error("Community posts read error:",error);
+    feed.innerHTML='<div class="empty">Unable to load community posts.</div>';
+});
 
-onValue(
-    ref(
-        db,
-        "communityPosts"
-    ),
-    snapshot=>{
-
-        renderPosts(
-            snapshot
-        );
-
-    },
-    error=>{
-
-        console.error(
-            "Community posts read error:",
-            error
-        );
-
-        feed.innerHTML=
-            `
-            <div class="empty">
-                Unable to load community posts.
-            </div>
-            `;
-
+async function loadAllCommunityPosts(){
+    if(allPostsLoaded){
+        allPostsLoaded=false;showAllPosts=false;
+        if(initialPostsCache)renderPosts(initialPostsCache);
+        return;
     }
-);
-
+    viewAllPostsBtn.disabled=true;
+    viewAllPostsBtn.textContent="Loading older posts…";
+    try{
+        const snapshot=await get(ref(db,"communityPosts"));
+        latestPostsSnapshot=snapshot;
+        allPostsLoaded=true;showAllPosts=true;
+        renderPosts(snapshot);
+    }catch(error){
+        console.error("Older posts load error:",error);
+        showToast("Could not load older posts. Please try again.");
+    }finally{viewAllPostsBtn.disabled=false;}
+}
 
 /* =========================
-   PRIVATE MEMBER NOTIFICATIONS
+   PERSISTENT NOTIFICATIONS + GLOBAL ANNOUNCEMENTS
 ========================= */
-
-let stopPrivateNotificationsListener = null;
-let stopGeneralNotificationsListener = null;
+let stopPrivateNotificationsListener=null;
+let stopGeneralNotificationsListener=null;
 let latestGeneralNotifications=[];
 let latestMemberNotifications=[];
 let notificationAudioContext=null;
 let notificationSoundReady=false;
-function unlockNotificationSound(){
-    try{
-        const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-        if(!AudioContextClass)return;
-        if(!notificationAudioContext)notificationAudioContext=new AudioContextClass();
-        if(notificationAudioContext.state==="suspended")notificationAudioContext.resume();
-        notificationSoundReady=true;
-    }catch(e){console.warn("Notification sound unavailable:",e);}
-}
-function playNotificationSound(){
-    if(!notificationSoundReady||!notificationAudioContext)return;
-    try{
-        const ctx=notificationAudioContext;
-        if(ctx.state==="suspended")ctx.resume();
-        const now=ctx.currentTime;
-        [880,1175].forEach((frequency,index)=>{
-            const osc=ctx.createOscillator();
-            const gain=ctx.createGain();
-            osc.type="sine";
-            osc.frequency.setValueAtTime(frequency,now+index*0.13);
-            gain.gain.setValueAtTime(0.0001,now+index*0.13);
-            gain.gain.exponentialRampToValueAtTime(0.12,now+index*0.13+0.025);
-            gain.gain.exponentialRampToValueAtTime(0.0001,now+index*0.13+0.22);
-            osc.connect(gain);gain.connect(ctx.destination);
-            osc.start(now+index*0.13);osc.stop(now+index*0.13+0.23);
-        });
-    }catch(e){console.warn("Notification sound failed:",e);}
-}
+function unlockNotificationSound(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;if(!notificationAudioContext)notificationAudioContext=new C();if(notificationAudioContext.state==="suspended")notificationAudioContext.resume();notificationSoundReady=true;}catch(e){console.warn(e);}}
+function playNotificationSound(){if(!notificationSoundReady||!notificationAudioContext)return;try{const c=notificationAudioContext,n=c.currentTime;[880,1175].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.setValueAtTime(f,n+i*.13);g.gain.setValueAtTime(.0001,n+i*.13);g.gain.exponentialRampToValueAtTime(.12,n+i*.13+.025);g.gain.exponentialRampToValueAtTime(.0001,n+i*.13+.22);o.connect(g);g.connect(c.destination);o.start(n+i*.13);o.stop(n+i*.13+.23);});}catch(e){console.warn(e);}}
 document.addEventListener("pointerdown",unlockNotificationSound,{once:true,passive:true});
 document.addEventListener("keydown",unlockNotificationSound,{once:true});
+function setNotificationBadge(count){if(!notificationBadge)return;const n=Math.max(0,Number(count)||0);notificationBadge.textContent=n>99?"99+":String(n);notificationBadge.hidden=n===0;}
+if(notificationBell){notificationBell.addEventListener("click",()=>{notificationPanel.classList.toggle("show");if(notificationPanel.classList.contains("show"))markVisibleNotificationsAsRead();});}
+document.addEventListener("click",event=>{if(notificationPanel&&notificationBell&&notificationPanel.classList.contains("show")&&!notificationPanel.contains(event.target)&&!notificationBell.contains(event.target))notificationPanel.classList.remove("show");});
+let privateNotificationItems=[];
+let globalNotificationItems=[];
+let notificationReadStatus={};
+let stopReadStatusListener=null;
+let stopGlobalNotificationsListener=null;
+let notificationSoundSeen={private:null,global:null};
 
-function setNotificationBadge(count){
-    if(!notificationBadge)return;
-    const n=Math.max(0,Number(count)||0);
-    notificationBadge.textContent=n>99?"99+":String(n);
-    notificationBadge.hidden=n===0;
+function notificationTimestamp(item){
+    const raw=item?.time ?? item?.createdAt ?? item?.publishedAt ?? item?.timestamp ?? 0;
+    if(typeof raw==="number")return raw;
+    const parsed=Date.parse(raw);
+    return Number.isFinite(parsed)?parsed:0;
 }
-
-if(notificationBell){
-    notificationBell.addEventListener("click",()=>{
-        notificationPanel.classList.toggle("show");
-        if(notificationPanel.classList.contains("show"))setNotificationBadge(0);
-    });
+function notificationText(item){
+    const title=String(item?.title || item?.heading || "").trim();
+    const body=String(item?.text || item?.message || item?.body || item?.content || item?.description || "").trim();
+    if(title && body && title!==body)return title+" — "+body;
+    return title || body || "New Kulzzy Radio announcement.";
 }
-document.addEventListener("click",event=>{
-    if(notificationPanel && notificationBell &&
-       notificationPanel.classList.contains("show") &&
-       !notificationPanel.contains(event.target) &&
-       !notificationBell.contains(event.target)){
-        notificationPanel.classList.remove("show");
+function updateNotificationSound(source,ids){
+    if(notificationSoundSeen[source]===null){
+        notificationSoundSeen[source]=new Set(ids);
+        return;
     }
-});
-
-function startPrivateNotificationsListener(uid) {
-    if (stopPrivateNotificationsListener) {
-        stopPrivateNotificationsListener();
-        stopPrivateNotificationsListener = null;
-    }
-
-    startPrivateNotificationsListener._seenIds=null;
-    if (!uid) {
-        notificationList.innerHTML = "";
+    const seen=notificationSoundSeen[source];
+    if(ids.some(id=>!seen.has(id)))playNotificationSound();
+    ids.forEach(id=>seen.add(id));
+}
+function getCombinedNotifications(){
+    const a=privateNotificationItems.map(item=>({...item,notificationKey:"private_"+item.id,notificationSource:"private"}));
+    const b=globalNotificationItems.map(item=>({...item,notificationKey:"global_"+item.id,notificationSource:"global"}));
+    return a.concat(b).sort((x,y)=>notificationTimestamp(y)-notificationTimestamp(x));
+}
+function renderCombinedNotifications(){
+    if(!notificationList)return;
+    const items=getCombinedNotifications();
+    notificationList.innerHTML="";
+    if(!items.length){
+        notificationList.innerHTML='<div class="notification-item">No notifications.</div>';
         latestMemberNotifications=[];
         setNotificationBadge(0);
         return;
     }
-
-    stopPrivateNotificationsListener = onValue(
-        ref(db, "notifications/" + uid),
-        snapshot => {
-            notificationList.innerHTML = "";
-
-            if (!snapshot.exists()) {
-                notificationList.innerHTML = `
-                    <div class="notification-item">
-                        No notifications.
-                    </div>
-                `;
-                return;
-            }
-
-            const items = [];
-            const currentNotificationIds=[];
-            snapshot.forEach(child => {
-                items.push(child.val());
-                currentNotificationIds.push(child.key);
-            });
-            if(!startPrivateNotificationsListener._seenIds){
-                startPrivateNotificationsListener._seenIds=new Set(currentNotificationIds);
-            }else{
-                const seen=startPrivateNotificationsListener._seenIds;
-                const hasNew=currentNotificationIds.some(id=>!seen.has(id));
-                if(hasNew)playNotificationSound();
-                currentNotificationIds.forEach(id=>seen.add(id));
-            }
-
-            items.sort(
-                (a, b) => (b.time || 0) - (a.time || 0)
-            );
-            latestMemberNotifications=items;
-            setNotificationBadge(notificationPanel.classList.contains("show")?0:items.length);
-
-            items.slice(0, 30).forEach(item => {
-                const div = document.createElement("div");
-                div.className = "notification-item";
-                div.textContent = item.text || "New activity.";
-                notificationList.appendChild(div);
-            });
-            latestGeneralNotifications.slice(0,20).forEach(item=>{
-                if(item.uid===uid)return;
-                const div=document.createElement("div");
-                div.className="notification-item";
-                div.textContent=item.text||"New community activity.";
-                notificationList.appendChild(div);
-            });
-        },
-        error => {
-            console.error("Notification read error:", error);
-            setNotificationBadge(0);
-            notificationList.innerHTML = `
-                <div class="notification-item">
-                    Unable to load notifications.
-                </div>
-            `;
+    latestMemberNotifications=items;
+    items.slice(0,50).forEach(item=>{
+        const read=!!notificationReadStatus[item.notificationKey];
+        const div=document.createElement("div");
+        div.className="notification-item"+(read?" notification-read":" notification-unread");
+        if(item.notificationSource==="global"){
+            const label=document.createElement("div");
+            label.textContent="KULZZY RADIO";
+            label.style.cssText="color:#ffd000;font-size:10px;font-weight:bold;margin-bottom:4px;letter-spacing:.5px";
+            div.appendChild(label);
         }
-    );
+        const message=document.createElement("div");
+        message.textContent=notificationText(item);
+        div.appendChild(message);
+        if(!read){
+            div.style.borderLeft="3px solid #ffd000";
+            div.style.background="rgba(255,208,0,.07)";
+        }else div.style.opacity=".72";
+        notificationList.appendChild(div);
+    });
+    const unread=items.reduce((n,item)=>n+(!notificationReadStatus[item.notificationKey]?1:0),0);
+    setNotificationBadge(notificationPanel.classList.contains("show")?0:unread);
 }
-
-/* General in-app notifications: public chat activity is shared with
-   signed-in members through the notification bell. */
-function startGeneralNotificationsListener(uid){
-    if(stopGeneralNotificationsListener){
-        stopGeneralNotificationsListener();
-        stopGeneralNotificationsListener=null;
+async function markVisibleNotificationsAsRead(){
+    if(!userId || !auth.currentUser)return;
+    const changes={};
+    getCombinedNotifications().forEach(item=>{
+        if(!notificationReadStatus[item.notificationKey])changes[item.notificationKey]=true;
+    });
+    if(!Object.keys(changes).length){setNotificationBadge(0);return;}
+    notificationReadStatus={...notificationReadStatus,...changes};
+    renderCombinedNotifications();
+    try{
+        await update(ref(db,"notificationReadStatus/"+userId),changes);
+    }catch(error){console.error("Could not save notification read status:",error);}
+}
+function startPrivateNotificationsListener(uid){
+    if(stopPrivateNotificationsListener){stopPrivateNotificationsListener();stopPrivateNotificationsListener=null;}
+    if(stopReadStatusListener){stopReadStatusListener();stopReadStatusListener=null;}
+    if(stopGlobalNotificationsListener){stopGlobalNotificationsListener();stopGlobalNotificationsListener=null;}
+    privateNotificationItems=[];
+    globalNotificationItems=[];
+    notificationReadStatus={};
+    notificationSoundSeen={private:null,global:null};
+    if(!uid){
+        notificationList.innerHTML="";
+        latestMemberNotifications=[];
+        setNotificationBadge(0);
+        return;
     }
-    latestGeneralNotifications=[];
-    if(!uid)return;
-    stopGeneralNotificationsListener=onValue(
-        ref(db,"generalNotifications"),
-        snapshot=>{
-            const items=[];
-            if(snapshot.exists()){
-                snapshot.forEach(child=>{
-                    const item=child.val()||{};
-                    if(item.uid!==uid)items.push({id:child.key,...item});
-                });
+    stopReadStatusListener=onValue(ref(db,"notificationReadStatus/"+uid),snapshot=>{
+        notificationReadStatus=snapshot.exists()?(snapshot.val()||{}):{};
+        renderCombinedNotifications();
+    },error=>console.error("Notification read-status error:",error));
+
+    // Preserve the existing private notification source and permissions.
+    stopPrivateNotificationsListener=onValue(ref(db,"notifications/"+uid),snapshot=>{
+        const items=[],ids=[];
+        if(snapshot.exists())snapshot.forEach(child=>{
+            items.push({id:child.key,...(child.val()||{})});
+            ids.push(child.key);
+        });
+        updateNotificationSound("private",ids);
+        privateNotificationItems=items;
+        renderCombinedNotifications();
+    },error=>console.error("Private notification read error:",error));
+
+    // Read admin-published global announcements from their separate public database.
+    stopGlobalNotificationsListener=onValue(ref(globalNotificationsDb,"publishedNotifications"),snapshot=>{
+        const items=[],ids=[];
+        if(snapshot.exists())snapshot.forEach(child=>{
+            const value=child.val()||{};
+            if(value && value.deleted!==true && value.active!==false){
+                items.push({id:child.key,...value});
+                ids.push(child.key);
             }
-            items.sort((a,b)=>(b.time||0)-(a.time||0));
-            const previous=startGeneralNotificationsListener._seenIds||new Set(items.map(x=>x.id));
-            const hasNew=items.some(item=>!previous.has(item.id));
-            if(hasNew)playNotificationSound();
-            startGeneralNotificationsListener._seenIds=new Set(items.map(x=>x.id));
-            latestGeneralNotifications=items;
-            if(notificationPanel.classList.contains("show"))setNotificationBadge(0);
-            else setNotificationBadge(latestMemberNotifications.length+items.length);
-            /* Refresh the panel without removing personal notifications. */
-            const existing=Array.from(notificationList.querySelectorAll(".notification-item"))
-                .filter(el=>el.dataset.general==="1");
-            existing.forEach(el=>el.remove());
-            items.slice(0,20).forEach(item=>{
-                const div=document.createElement("div");
-                div.className="notification-item";
-                div.dataset.general="1";
-                div.textContent=item.text||"New community activity.";
-                notificationList.appendChild(div);
-            });
-        },
-        error=>console.error("General notification read error:",error)
-    );
+        });
+        updateNotificationSound("global",ids);
+        globalNotificationItems=items;
+        renderCombinedNotifications();
+    },error=>{
+        console.error("Global announcement read error:",error);
+        renderCombinedNotifications();
+    });
 }
 
 
