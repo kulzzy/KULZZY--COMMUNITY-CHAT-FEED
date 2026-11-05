@@ -870,8 +870,10 @@ body.image-viewer-open{
 }
 
 .comments{
+    display:none;
     padding:0 12px 12px;
 }
+.comments.show{display:block;}
 
 .comment{
     background:#082431;
@@ -2970,9 +2972,9 @@ Cancel
       <button id="socialProfileClose" class="social-profile-close" type="button">×</button>
     </div>
     <div class="social-stats">
-      <div class="social-stat"><strong id="socialPostStat">0</strong><span>Posts</span></div>
       <div class="social-stat"><strong id="socialFollowerStat">0</strong><span>Followers</span></div>
-      <div class="social-stat"><strong id="socialFollowingStat">0</strong><span>Following</span></div>
+      <div class="social-stat"><strong id="socialCelebrationsStat">0</strong><span>Celebrations</span></div>
+      <div class="social-stat"><strong id="socialClicksStat">0</strong><span>Clicks</span></div>
     </div>
     <div class="social-profile-actions">
       <button id="socialFollowBtn" type="button">Follow</button>
@@ -3209,23 +3211,6 @@ const db=
 
 const auth=
     getAuth(app);
-
-
-/* =========================
-   GLOBAL NOTIFICATIONS DATABASE
-========================= */
-
-const globalNotificationsConfig={
-    apiKey:"AIzaSyCqMzCkTvQQOYrWZKYRkH553IPMmNYYhIA",
-    authDomain:"kulzzy-radio-notifications.firebaseapp.com",
-    databaseURL:"https://kulzzy-radio-notifications-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId:"kulzzy-radio-notifications",
-    storageBucket:"kulzzy-radio-notifications.firebasestorage.app",
-    messagingSenderId:"477307840798",
-    appId:"1:477307840798:web:7d0ee08c263dd79be0c10f"
-};
-const globalNotificationsApp=initializeApp(globalNotificationsConfig,"kulzzyGlobalNotifications");
-const globalNotificationsDb=getDatabase(globalNotificationsApp);
 
 
 /* =========================
@@ -3618,19 +3603,6 @@ authLogout.onclick=async()=>{
     }catch(e){console.error(e);}
 };
 
-function startAuthListener(){
-    return new Promise(resolve=>{
-        let first=true;
-
-        /* Wait for Firebase to restore the saved login before showing the sign-up/login gate. */
-        onAuthStateChanged(auth,async user=>{
-            firebaseUser=user;
-
-            if(user){
-                setStableUserId(user.uid);
-                localStorage.setItem("kulzzyCommunityLoggedIn","1");
-                startPrivateNotificationsListener(user.uid);
-                startOwnProfileStatsListeners();
 /* =========================
    KULZZY MONETIZATION
 ========================= */
@@ -3725,6 +3697,22 @@ if(monetizationClose) monetizationClose.onclick=()=>{
 if(monetizationModal) monetizationModal.addEventListener("click",event=>{
     if(event.target===monetizationModal) monetizationClose.click();
 });
+
+function startAuthListener(){
+    return new Promise(resolve=>{
+        let first=true;
+
+        /* Wait for Firebase to restore the saved login before showing the sign-up/login gate. */
+        onAuthStateChanged(auth,async user=>{
+            firebaseUser=user;
+
+            if(user){
+                setStableUserId(user.uid);
+                localStorage.setItem("kulzzyCommunityLoggedIn","1");
+                startPrivateNotificationsListener(user.uid);
+                startGeneralNotificationsListener(user.uid);
+                startOwnProfileStatsListeners();
+
 
 
                 hideAuthGate();
@@ -4500,10 +4488,10 @@ function countOwnPostClicks(){
                     post.uid===userId
                 ){
 
-                    total +=
-                        Number(
-                            post.clicks || 0
-                        );
+                    const clicks = Number(post.clicks ?? post.clickCount ?? 0);
+                    if(Number.isFinite(clicks) && clicks > 0){
+                        total += clicks;
+                    }
 
                 }
 
@@ -4556,9 +4544,11 @@ function startOwnProfileStatsListeners(){
             snapshot=>{
                 followersStat.textContent=
                     snapshot.exists()
-                        ? Object.keys(snapshot.val() || {}).length
+                        ? Object.keys(snapshot.val() || {}).filter(key => key !== "count").length
                         : 0;
-            }
+                refreshMonetizationStats();
+            },
+            error=>console.error("Own follower statistics read failed:",error)
         );
 
     ownCelebrationsUnsub=
@@ -4576,11 +4566,13 @@ function startOwnProfileStatsListeners(){
                     }else if(value && typeof value.count !== "undefined"){
                         count=Number(value.count) || 0;
                     }else if(value && typeof value === "object"){
-                        count=Object.keys(value).length;
+                        count=Object.keys(value).filter(k=>k!=="count").length;
                     }
                 }
                 celebrationsStat.textContent=count;
-            }
+                refreshMonetizationStats();
+            },
+            error=>console.error("Own celebration statistics read failed:",error)
         );
 }
 
@@ -4853,6 +4845,19 @@ async function sendMessage(){
             }
         );
 
+        /* Broadcast an in-app general notification so every signed-in
+           community member can see new public chat activity in the bell. */
+        try{
+            await set(push(ref(db,"generalNotifications")),{
+                type:"community_chat",
+                uid:userId,
+                name:savedProfile.name||"Listener",
+                text:(savedProfile.name||"A member")+" shared a new community message.",
+                time:Date.now()
+            });
+        }catch(notificationError){
+            console.warn("General chat notification could not be saved:",notificationError);
+        }
 
         messageBox.value=
             "";
@@ -5993,8 +5998,8 @@ async function getFollowerCount(
 
         return snap.exists()
             ? Object.keys(
-                snap.val()
-              ).length
+                snap.val() || {}
+              ).filter(key => key !== "count").length
             : 0;
 
     }catch(error){
@@ -6010,168 +6015,57 @@ async function getFollowerCount(
 }
 
 
-async function follow(
-    owner,
-    button,
-    countElement
-){
+async function follow(owner,button,countElement){
+    if(!userId){ showToast("Please sign in to follow members."); return; }
+    if(owner===userId){ showToast("You cannot follow yourself."); return; }
 
-    if(
-        owner === userId
-    ){
-
-        showToast(
-            "You cannot follow yourself."
-        );
-
-        return;
+    const followingNow = button.classList.contains("following");
+    try{
+        await setFollowingRecord(owner,!followingNow);
+        button.classList.toggle("following",!followingNow);
+        button.textContent=!followingNow ? "Following" : "Follow Me";
+        const total=await getFollowerCount(owner);
+        countElement.textContent=total+" followers";
+        if(openedSocialUid===owner && socialFollowerStat){
+            socialFollowerStat.textContent=total;
+        }
+    }catch(error){
+        console.error("Follow update failed:",error);
+        showToast("Could not update follow. Please try again.");
     }
+}
 
-
+async function setFollow(owner,button,countElement){
+    if(!owner || !button || !countElement) return;
     if(!userId){
-
+        button.disabled=true;
+        button.textContent="Sign in to follow";
+        countElement.textContent=await getFollowerCount(owner)+" followers";
         return;
     }
-
-
-    const followRef=
-        ref(
-            db,
-            `followers/${owner}/${userId}`
-        );
-
-
-    const snapshot=
-        await get(
-            followRef
-        );
-
-
-    if(snapshot.exists()){
-
-        await set(
-            followRef,
-            null
-        );
-
-        button.textContent=
-            "Follow Me";
-
-        button.classList.remove(
-            "following"
-        );
-
-    }else{
-
-        await set(
-            followRef,
-            {
-
-                uid:
-                    userId,
-
-                name:
-                    savedProfile?.name ||
-                    "Listener",
-
-                time:
-                    Date.now()
-
-            }
-        );
-
-
-        button.textContent=
-            "Following";
-
-        button.classList.add(
-            "following"
-        );
-
-
-        await set(
-    push(
-        ref(
-            db,
-            "notifications/" + owner
-        )
-    ),
-    {
-        type: "follow",
-        uid: owner,
-        fromUid: userId,
-        name: savedProfile?.name || "Listener",
-        text: (savedProfile?.name || "Someone") +
-            " followed you.",
-        time: Date.now()
-    }
-);
-
-
-    countElement.textContent=
-        await getFollowerCount(
-            owner
-        );
-
-    }
-}
-
-async function setFollow(
-    owner,
-    button,
-    countElement
-){
-
-    if(
-        owner === userId
-    ){
-
-        button.style.display=
-            "none";
-
-        countElement.textContent=
-            await getFollowerCount(
-                owner
-            ) +
-            " followers";
-
+    button.disabled=false;
+    if(owner===userId){
+        button.style.display="none";
+        countElement.textContent=await getFollowerCount(owner)+" followers";
         return;
     }
-
-
-    const snapshot=
-        await get(
-            ref(
-                db,
-                `followers/${owner}/${userId}`
-            )
-        );
-
-
-    if(snapshot.exists()){
-
-        button.textContent=
-            "Following";
-
-        button.classList.add(
-            "following"
-        );
-
+    try{
+        const snapshot=await get(ref(db,`followers/${owner}/${userId}`));
+        const isFollowing=snapshot.exists();
+        button.textContent=isFollowing?"Following":"Follow Me";
+        button.classList.toggle("following",isFollowing);
+        countElement.textContent=await getFollowerCount(owner)+" followers";
+    }catch(error){
+        console.error("Follow status load failed:",error);
+        countElement.textContent="0 followers";
     }
-
-
-    countElement.textContent=
-        await getFollowerCount(
-            owner
-        ) +
-        " followers";
-
 }
-
 
 /* =========================
    LIKE
 ========================= */
+
+
 
 async function like(
     id,
@@ -6263,71 +6157,34 @@ async function like(
    CLICK COUNT
 ========================= */
 
-async function clickPost(
-    id,
-    url
-){
+async function clickPost(id,url){
+    document.body.classList.add("image-viewer-open");
+    viewerImage.src=url;
+    imageViewer.classList.add("show");
 
-    document.body.classList.add(
-        "image-viewer-open"
-    );
+    const countRef=ref(db,`communityPosts/${id}/clicks`);
+    try{
+        // Count each actual image opening. The old localStorage lock prevented
+        // repeat clicks and could leave totals appearing not to move.
+        const result=await runTransaction(countRef,current=>Number(current||0)+1);
+        const total=Number(result.snapshot.val()||0);
+        viewerClickCount.textContent="👆 "+total;
 
-    viewerImage.src=
-        url;
+        const card=document.getElementById("post-"+id);
+        const cardCount=card?.querySelector(".click-count span");
+        if(cardCount) cardCount.textContent=String(total);
 
-    imageViewer.classList.add(
-        "show"
-    );
-
-
-    const localKey=
-        "kulzzy_clicked_" +
-        id;
-
-
-    const countRef=
-        ref(
-            db,
-            `communityPosts/${id}/clicks`
-        );
-
-
-    if(
-        !localStorage.getItem(
-            localKey
-        )
-    ){
-
-        localStorage.setItem(
-            localKey,
-            "1"
-        );
-
-
-        await runTransaction(
-            countRef,
-            current=>
-                Number(
-                    current || 0
-                ) + 1
-        );
-
+        // Recalculate the signed-in member's total after Firebase commits.
+        if(latestPostsSnapshot) updateOwnProfileStats();
+        if(openedSocialUid && socialProfileModal?.classList.contains("show")){
+            refreshSocialProfileStats(openedSocialUid);
+        }
+    }catch(error){
+        console.error("Post click count could not be saved:",error);
+        const current=await get(countRef).catch(()=>null);
+        viewerClickCount.textContent="👆 "+(current?.val()||0);
+        showToast("Click could not be counted. Check Firebase database permissions.");
     }
-
-
-    const snapshot=
-        await get(
-            countRef
-        );
-
-
-    viewerClickCount.textContent=
-        "👆 " +
-        (
-            snapshot.val() ||
-            0
-        );
-
 }
 
 
@@ -6606,7 +6463,13 @@ function renderPosts(snapshot){
         celebrateMeButton.onclick=()=>celebrateMe(post);
         commentSend.onclick=()=>comment(post.id,commentInput);
         commentInput.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();comment(post.id,commentInput);}};
-        commentToggle.onclick=()=>commentInput.focus();
+        commentToggle.onclick=()=>{
+            const commentsPanel=article.querySelector(".comments");
+            const opening=!commentsPanel.classList.contains("show");
+            commentsPanel.classList.toggle("show",opening);
+            commentToggle.setAttribute("aria-expanded",opening?"true":"false");
+            if(opening) commentInput.focus();
+        };
         shareBtn.onclick=()=>sharePost(post);
         repostBtn.onclick=()=>repostPost(post);
         onValue(ref(db,`comments/${post.id}`),snap=>{
@@ -6630,9 +6493,9 @@ const socialProfileModal=$("socialProfileModal");
 const socialProfileAvatar=$("socialProfileAvatar");
 const socialProfileName=$("socialProfileName");
 const socialProfileNumber=$("socialProfileNumber");
-const socialPostStat=$("socialPostStat");
 const socialFollowerStat=$("socialFollowerStat");
-const socialFollowingStat=$("socialFollowingStat");
+const socialCelebrationsStat=$("socialCelebrationsStat");
+const socialClicksStat=$("socialClicksStat");
 const socialFollowBtn=$("socialFollowBtn");
 const socialProfilePosts=$("socialProfilePosts");
 const socialProfileClose=$("socialProfileClose");
@@ -6640,24 +6503,37 @@ let openedSocialUid="";
 
 async function getFollowingCount(uid){try{const s=await get(ref(db,`following/${uid}`));return s.exists()?Object.keys(s.val()||{}).length:0;}catch(e){return 0;}}
 async function setFollowingRecord(owner,following){
-    if(!userId||!owner||owner===userId)return;
-    const a=ref(db,`following/${userId}/${owner}`), b=ref(db,`followers/${owner}/${userId}`);
+    if(!userId || !owner || owner===userId) return;
+
+    const now=Date.now();
+    const followerName=savedProfile?.name||"Listener";
+    const updates={};
+
     if(following){
-        const now=Date.now();
-        const followerName=savedProfile?.name||"Listener";
-        const data={uid:owner,time:now};
-        await set(a,data);
-        await set(b,{uid:userId,name:followerName,time:now});
+        updates[`following/${userId}/${owner}`]={uid:owner,time:now};
+        updates[`followers/${owner}/${userId}`]={uid:userId,name:followerName,time:now};
+    }else{
+        updates[`following/${userId}/${owner}`]=null;
+        updates[`followers/${owner}/${userId}`]=null;
+    }
+
+    // One atomic multi-location update keeps both sides of the relationship in sync.
+    await update(ref(db),updates);
+
+    if(following){
         try{
             await set(push(ref(db,"notifications/"+owner)),{
-                type:"follow",uid:owner,fromUid:userId,name:followerName,
-                text:followerName+" followed you.",time:now
+                type:"follow",
+                uid:owner,
+                fromUid:userId,
+                name:followerName,
+                text:followerName+" followed you.",
+                time:now
             });
         }catch(notificationError){
             console.warn("Follow notification could not be saved:",notificationError);
         }
     }
-    else{await set(a,null);await set(b,null);}
 }
 
 function searchUsers(){
@@ -6679,20 +6555,54 @@ function searchUsers(){
 }
 userSearchBtn.onclick=searchUsers; userSearchInput.addEventListener("input",searchUsers); userSearchInput.addEventListener("keydown",e=>{if(e.key==="Enter")searchUsers();});
 
+async function refreshSocialProfileStats(uid){
+    if(!uid) return;
+    try{
+        const [followersSnap,celebrationCountSnap,postsSnap]=await Promise.all([
+            get(ref(db,`followers/${uid}`)),
+            get(ref(db,`celebrations/${uid}/count`)),
+            get(ref(db,"communityPosts"))
+        ]);
+        const followers=followersSnap.exists()?Object.keys(followersSnap.val()||{}).filter(k=>k!=="count").length:0;
+        // Only the aggregate count is public. Individual payment records remain private.
+        const celebrations=celebrationCountSnap.exists()?Math.max(0,Number(celebrationCountSnap.val())||0):0;
+        let clicks=0;
+        if(postsSnap.exists()) postsSnap.forEach(child=>{
+            const post=child.val()||{};
+            if(post.uid===uid) clicks+=Math.max(0,Number(post.clicks??post.clickCount??0)||0);
+        });
+        if(openedSocialUid===uid){
+            socialFollowerStat.textContent=followers;
+            socialCelebrationsStat.textContent=celebrations;
+            socialClicksStat.textContent=clicks;
+        }
+    }catch(error){
+        console.error("Profile statistics refresh failed:",error);
+    }
+}
+
 async function openSocialProfile(uid){
     if(!uid)return; openedSocialUid=uid;
     const p=getProfileData(uid,{}); socialProfileAvatar.src=p.photo; socialProfileName.textContent=p.name; socialProfileNumber.textContent="@"+p.username+" · User #"+p.userNumber;
     socialProfileModal.classList.add("show");
-    const [followers,following]=await Promise.all([getFollowerCount(uid),getFollowingCount(uid)]);
-    socialFollowerStat.textContent=followers; socialFollowingStat.textContent=following;
+    const [followers,celebrationCountSnap]=await Promise.all([
+        getFollowerCount(uid),
+        get(ref(db,`celebrations/${uid}/count`))
+    ]);
+    socialFollowerStat.textContent=followers;
+    // Public profile reads only the aggregate; private payment details stay private.
+    socialCelebrationsStat.textContent=celebrationCountSnap.exists()
+        ? Math.max(0,Number(celebrationCountSnap.val())||0)
+        : 0;
     const snap=latestPostsSnapshot; let posts=[];
     if(snap&&snap.exists()) snap.forEach(c=>{const d=c.val()||{};if(d.uid===uid&&(d.image||d.images))posts.push({id:c.key,...d});});
-    posts.sort((a,b)=>(b.time||0)-(a.time||0)); socialPostStat.textContent=posts.length;
+    posts.sort((a,b)=>(b.time||0)-(a.time||0));
+    socialClicksStat.textContent=posts.reduce((total,post)=>total+Math.max(0,Number(post.clicks??post.clickCount??0)||0),0);
     socialProfilePosts.innerHTML=posts.length?"":"<div class=\"community-empty\">No posts yet.</div>";
     if(uid===userId){socialFollowBtn.style.display="none";}else{
         socialFollowBtn.style.display="block"; socialFollowBtn.textContent="Follow"; socialFollowBtn.classList.remove("following");
         const fs=await get(ref(db,`followers/${uid}/${userId}`)); if(fs.exists()){socialFollowBtn.textContent="Following";socialFollowBtn.classList.add("following");}
-        socialFollowBtn.onclick=async()=>{await setFollowingRecord(uid,!socialFollowBtn.classList.contains("following"));const is= !socialFollowBtn.classList.contains("following");socialFollowBtn.classList.toggle("following",is);socialFollowBtn.textContent=is?"Following":"Follow";socialFollowerStat.textContent=await getFollowerCount(uid);};
+        socialFollowBtn.onclick=async()=>{try{const next=!socialFollowBtn.classList.contains("following");await setFollowingRecord(uid,next);socialFollowBtn.classList.toggle("following",next);socialFollowBtn.textContent=next?"Following":"Follow";socialFollowerStat.textContent=await getFollowerCount(uid);}catch(error){console.error("Social profile follow failed:",error);showToast("Could not update follow. Please try again.");}};
     }
     posts.forEach(post=>{
         const el=document.createElement("article");el.className="post";const images=getPostImages(post);const prof=getProfileData(post.uid,post);
@@ -6741,6 +6651,8 @@ onValue(
 ========================= */
 
 let stopPrivateNotificationsListener = null;
+let stopGeneralNotificationsListener = null;
+let latestGeneralNotifications=[];
 let latestMemberNotifications=[];
 let notificationAudioContext=null;
 let notificationSoundReady=false;
@@ -6785,7 +6697,7 @@ function setNotificationBadge(count){
 if(notificationBell){
     notificationBell.addEventListener("click",()=>{
         notificationPanel.classList.toggle("show");
-        if(notificationPanel.classList.contains("show"))markVisibleNotificationsAsRead();
+        if(notificationPanel.classList.contains("show"))setNotificationBadge(0);
     });
 }
 document.addEventListener("click",event=>{
@@ -6797,133 +6709,122 @@ document.addEventListener("click",event=>{
     }
 });
 
-let privateNotificationItems=[];
-let globalNotificationItems=[];
-let notificationReadStatus={};
-let stopReadStatusListener=null;
-let stopGlobalNotificationsListener=null;
-let notificationSoundSeen={private:null,global:null};
-
-function notificationTimestamp(item){
-    const raw=item?.time ?? item?.createdAt ?? item?.publishedAt ?? item?.timestamp ?? 0;
-    if(typeof raw==="number")return raw;
-    const parsed=Date.parse(raw);
-    return Number.isFinite(parsed)?parsed:0;
-}
-function notificationText(item){
-    const title=String(item?.title || item?.heading || "").trim();
-    const body=String(item?.text || item?.message || item?.body || item?.content || item?.description || "").trim();
-    if(title && body && title!==body)return title+" — "+body;
-    return title || body || "New Kulzzy Radio announcement.";
-}
-function updateNotificationSound(source,ids){
-    if(notificationSoundSeen[source]===null){
-        notificationSoundSeen[source]=new Set(ids);
-        return;
+function startPrivateNotificationsListener(uid) {
+    if (stopPrivateNotificationsListener) {
+        stopPrivateNotificationsListener();
+        stopPrivateNotificationsListener = null;
     }
-    const seen=notificationSoundSeen[source];
-    if(ids.some(id=>!seen.has(id)))playNotificationSound();
-    ids.forEach(id=>seen.add(id));
-}
-function getCombinedNotifications(){
-    const a=privateNotificationItems.map(item=>({...item,notificationKey:"private_"+item.id,notificationSource:"private"}));
-    const b=globalNotificationItems.map(item=>({...item,notificationKey:"global_"+item.id,notificationSource:"global"}));
-    return a.concat(b).sort((x,y)=>notificationTimestamp(y)-notificationTimestamp(x));
-}
-function renderCombinedNotifications(){
-    if(!notificationList)return;
-    const items=getCombinedNotifications();
-    notificationList.innerHTML="";
-    if(!items.length){
-        notificationList.innerHTML='<div class="notification-item">No notifications.</div>';
+
+    startPrivateNotificationsListener._seenIds=null;
+    if (!uid) {
+        notificationList.innerHTML = "";
         latestMemberNotifications=[];
         setNotificationBadge(0);
         return;
     }
-    latestMemberNotifications=items;
-    items.slice(0,50).forEach(item=>{
-        const read=!!notificationReadStatus[item.notificationKey];
-        const div=document.createElement("div");
-        div.className="notification-item"+(read?" notification-read":" notification-unread");
-        if(item.notificationSource==="global"){
-            const label=document.createElement("div");
-            label.textContent="KULZZY RADIO";
-            label.style.cssText="color:#ffd000;font-size:10px;font-weight:bold;margin-bottom:4px;letter-spacing:.5px";
-            div.appendChild(label);
-        }
-        const message=document.createElement("div");
-        message.textContent=notificationText(item);
-        div.appendChild(message);
-        if(!read){
-            div.style.borderLeft="3px solid #ffd000";
-            div.style.background="rgba(255,208,0,.07)";
-        }else div.style.opacity=".72";
-        notificationList.appendChild(div);
-    });
-    const unread=items.reduce((n,item)=>n+(!notificationReadStatus[item.notificationKey]?1:0),0);
-    setNotificationBadge(notificationPanel.classList.contains("show")?0:unread);
-}
-async function markVisibleNotificationsAsRead(){
-    if(!userId || !auth.currentUser)return;
-    const changes={};
-    getCombinedNotifications().forEach(item=>{
-        if(!notificationReadStatus[item.notificationKey])changes[item.notificationKey]=true;
-    });
-    if(!Object.keys(changes).length){setNotificationBadge(0);return;}
-    notificationReadStatus={...notificationReadStatus,...changes};
-    renderCombinedNotifications();
-    try{
-        await update(ref(db,"notificationReadStatus/"+userId),changes);
-    }catch(error){console.error("Could not save notification read status:",error);}
-}
-function startPrivateNotificationsListener(uid){
-    if(stopPrivateNotificationsListener){stopPrivateNotificationsListener();stopPrivateNotificationsListener=null;}
-    if(stopReadStatusListener){stopReadStatusListener();stopReadStatusListener=null;}
-    if(stopGlobalNotificationsListener){stopGlobalNotificationsListener();stopGlobalNotificationsListener=null;}
-    privateNotificationItems=[];
-    globalNotificationItems=[];
-    notificationReadStatus={};
-    notificationSoundSeen={private:null,global:null};
-    if(!uid){
-        notificationList.innerHTML="";
-        latestMemberNotifications=[];
-        setNotificationBadge(0);
-        return;
-    }
-    stopReadStatusListener=onValue(ref(db,"notificationReadStatus/"+uid),snapshot=>{
-        notificationReadStatus=snapshot.exists()?(snapshot.val()||{}):{};
-        renderCombinedNotifications();
-    },error=>console.error("Notification read-status error:",error));
 
-    // Preserve the existing private notification source and permissions.
-    stopPrivateNotificationsListener=onValue(ref(db,"notifications/"+uid),snapshot=>{
-        const items=[],ids=[];
-        if(snapshot.exists())snapshot.forEach(child=>{
-            items.push({id:child.key,...(child.val()||{})});
-            ids.push(child.key);
-        });
-        updateNotificationSound("private",ids);
-        privateNotificationItems=items;
-        renderCombinedNotifications();
-    },error=>console.error("Private notification read error:",error));
+    stopPrivateNotificationsListener = onValue(
+        ref(db, "notifications/" + uid),
+        snapshot => {
+            notificationList.innerHTML = "";
 
-    // Read admin-published global announcements from their separate public database.
-    stopGlobalNotificationsListener=onValue(ref(globalNotificationsDb,"publishedNotifications"),snapshot=>{
-        const items=[],ids=[];
-        if(snapshot.exists())snapshot.forEach(child=>{
-            const value=child.val()||{};
-            if(value && value.deleted!==true && value.active!==false){
-                items.push({id:child.key,...value});
-                ids.push(child.key);
+            if (!snapshot.exists()) {
+                notificationList.innerHTML = `
+                    <div class="notification-item">
+                        No notifications.
+                    </div>
+                `;
+                return;
             }
-        });
-        updateNotificationSound("global",ids);
-        globalNotificationItems=items;
-        renderCombinedNotifications();
-    },error=>{
-        console.error("Global announcement read error:",error);
-        renderCombinedNotifications();
-    });
+
+            const items = [];
+            const currentNotificationIds=[];
+            snapshot.forEach(child => {
+                items.push(child.val());
+                currentNotificationIds.push(child.key);
+            });
+            if(!startPrivateNotificationsListener._seenIds){
+                startPrivateNotificationsListener._seenIds=new Set(currentNotificationIds);
+            }else{
+                const seen=startPrivateNotificationsListener._seenIds;
+                const hasNew=currentNotificationIds.some(id=>!seen.has(id));
+                if(hasNew)playNotificationSound();
+                currentNotificationIds.forEach(id=>seen.add(id));
+            }
+
+            items.sort(
+                (a, b) => (b.time || 0) - (a.time || 0)
+            );
+            latestMemberNotifications=items;
+            setNotificationBadge(notificationPanel.classList.contains("show")?0:items.length);
+
+            items.slice(0, 30).forEach(item => {
+                const div = document.createElement("div");
+                div.className = "notification-item";
+                div.textContent = item.text || "New activity.";
+                notificationList.appendChild(div);
+            });
+            latestGeneralNotifications.slice(0,20).forEach(item=>{
+                if(item.uid===uid)return;
+                const div=document.createElement("div");
+                div.className="notification-item";
+                div.textContent=item.text||"New community activity.";
+                notificationList.appendChild(div);
+            });
+        },
+        error => {
+            console.error("Notification read error:", error);
+            setNotificationBadge(0);
+            notificationList.innerHTML = `
+                <div class="notification-item">
+                    Unable to load notifications.
+                </div>
+            `;
+        }
+    );
+}
+
+/* General in-app notifications: public chat activity is shared with
+   signed-in members through the notification bell. */
+function startGeneralNotificationsListener(uid){
+    if(stopGeneralNotificationsListener){
+        stopGeneralNotificationsListener();
+        stopGeneralNotificationsListener=null;
+    }
+    latestGeneralNotifications=[];
+    if(!uid)return;
+    stopGeneralNotificationsListener=onValue(
+        ref(db,"generalNotifications"),
+        snapshot=>{
+            const items=[];
+            if(snapshot.exists()){
+                snapshot.forEach(child=>{
+                    const item=child.val()||{};
+                    if(item.uid!==uid)items.push({id:child.key,...item});
+                });
+            }
+            items.sort((a,b)=>(b.time||0)-(a.time||0));
+            const previous=startGeneralNotificationsListener._seenIds||new Set(items.map(x=>x.id));
+            const hasNew=items.some(item=>!previous.has(item.id));
+            if(hasNew)playNotificationSound();
+            startGeneralNotificationsListener._seenIds=new Set(items.map(x=>x.id));
+            latestGeneralNotifications=items;
+            if(notificationPanel.classList.contains("show"))setNotificationBadge(0);
+            else setNotificationBadge(latestMemberNotifications.length+items.length);
+            /* Refresh the panel without removing personal notifications. */
+            const existing=Array.from(notificationList.querySelectorAll(".notification-item"))
+                .filter(el=>el.dataset.general==="1");
+            existing.forEach(el=>el.remove());
+            items.slice(0,20).forEach(item=>{
+                const div=document.createElement("div");
+                div.className="notification-item";
+                div.dataset.general="1";
+                div.textContent=item.text||"New community activity.";
+                notificationList.appendChild(div);
+            });
+        },
+        error=>console.error("General notification read error:",error)
+    );
 }
 
 
@@ -7022,10 +6923,27 @@ async function loadFirebaseProfile(){
    START
 ========================= */
 
+/*
+   Restore the saved Firebase login session before the Community Feed
+   checks whether to show the login gate. This prevents a returning
+   member from being redirected while Firebase is still restoring auth.
+*/
 setPersistence(auth,browserLocalPersistence)
-    .then(()=>startAuthListener())
-    .catch(error=>{
-        console.error("Auth persistence error:",error);
+    .then(async()=>{
+        if(typeof auth.authStateReady==="function"){
+            await auth.authStateReady();
+        }
+        await startAuthListener();
+    })
+    .catch(async error=>{
+        console.error("Auth persistence/restore error:",error);
+        try{
+            if(typeof auth.authStateReady==="function"){
+                await auth.authStateReady();
+            }
+        }catch(restoreError){
+            console.error("Auth restore check error:",restoreError);
+        }
         startAuthListener();
     });
 
