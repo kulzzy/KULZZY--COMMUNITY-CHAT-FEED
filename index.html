@@ -2163,6 +2163,34 @@ nav, #navigation, #navigationBar, #bottomNavigation, .navigation-bar, .bottom-na
     overflow-x:hidden;
 }
 
+/* PROGRESSIVE PAGE LOADING — keep the first visible section responsive */
+.community-chat-section,
+#kulzzyLeadership{
+    content-visibility:auto;
+    contain-intrinsic-size:auto 680px;
+}
+.feed-loading-card{
+    min-height:230px;
+    margin:0 0 18px;
+    padding:18px;
+    border:1px solid #075a78;
+    border-radius:22px;
+    background:#062d3e;
+}
+.feed-loading-line,
+.feed-loading-image{
+    display:block;
+    border-radius:10px;
+    background:linear-gradient(90deg,#08394c 25%,#10516a 55%, #08394c 75%);
+    background-size:200% 100%;
+    animation:feedLoadingShimmer 1.25s ease-in-out infinite;
+}
+.feed-loading-line{height:13px;width:55%;margin:8px 0 14px;}
+.feed-loading-line.short{width:32%;}
+.feed-loading-image{height:135px;width:100%;margin-top:14px;}
+@keyframes feedLoadingShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.feed-loading-line,.feed-loading-image{animation:none;}}
+
 </style>
 </head>
 
@@ -2881,11 +2909,13 @@ multiple>
 </div>
 <main id="feed" class="feed">
 
-<div
-class="empty"
-id="emptyFeed">
-No community posts yet.
+<div class="feed-loading-card" aria-label="Loading community posts" role="status">
+    <span class="feed-loading-line"></span>
+    <span class="feed-loading-line short"></span>
+    <span class="feed-loading-image"></span>
 </div>
+
+<div class="empty" id="emptyFeed" hidden>No community posts yet.</div>
 
 </main>
 
@@ -4482,38 +4512,50 @@ menuShareProfile.onclick=async()=>{
 };
 
 
+const uniquePostClickCounts={};
+
 function countOwnPostClicks(){
-
     let total=0;
-
-    if(
-        latestPostsSnapshot &&
-        latestPostsSnapshot.exists()
-    ){
-
-        latestPostsSnapshot.forEach(
-            child=>{
-
-                const post=
-                    child.val() || {};
-
-                if(
-                    post.uid===userId
-                ){
-
-                    const clicks = Number(post.clicks ?? post.clickCount ?? 0);
-                    if(Number.isFinite(clicks) && clicks > 0){
-                        total += clicks;
-                    }
-
-                }
-
-            }
-        );
-
+    if(latestPostsSnapshot && latestPostsSnapshot.exists()){
+        latestPostsSnapshot.forEach(child=>{
+            const post=child.val()||{};
+            if(post.uid===userId) total+=Number(uniquePostClickCounts[child.key]||0);
+        });
     }
-
     return total;
+}
+
+async function getUniquePostClickCount(postId){
+    const snap=await get(ref(db,`postImageClicks/${postId}`));
+    const count=snap.exists()?Object.keys(snap.val()||{}).length:0;
+    uniquePostClickCounts[postId]=count;
+    return count;
+}
+
+async function refreshUniquePostClickCount(postId,postElement){
+    try{
+        const count=await getUniquePostClickCount(postId);
+        const countElement=postElement?.querySelector('.click-count span');
+        if(countElement) countElement.textContent=String(count);
+        if(userId) updateOwnProfileStats();
+        if(openedSocialUid && socialProfileModal?.classList.contains('show')) refreshSocialProfileStats(openedSocialUid);
+        return count;
+    }catch(error){
+        console.error('Unique post click count read failed:',error);
+        return 0;
+    }
+}
+
+async function refreshOwnUniquePostClickStats(){
+    if(!userId || !latestPostsSnapshot || !latestPostsSnapshot.exists()) return;
+    const jobs=[];
+    latestPostsSnapshot.forEach(child=>{
+        const post=child.val()||{};
+        if(post.uid===userId) jobs.push(getUniquePostClickCount(child.key).catch(()=>0));
+    });
+    await Promise.all(jobs);
+    updateOwnProfileStats();
+    refreshMonetizationStats();
 }
 
 
@@ -6175,28 +6217,26 @@ async function clickPost(id,url){
     viewerImage.src=url;
     imageViewer.classList.add("show");
 
-    const countRef=ref(db,`communityPosts/${id}/clicks`);
+    // Count this authenticated visitor only once for the entire post.
     try{
-        // Count each actual image opening. The old localStorage lock prevented
-        // repeat clicks and could leave totals appearing not to move.
-        const result=await runTransaction(countRef,current=>Number(current||0)+1);
-        const total=Number(result.snapshot.val()||0);
+        if(userId){
+            const visitorClickRef=ref(db,`postImageClicks/${id}/${userId}`);
+            const existing=await get(visitorClickRef);
+            if(!existing.exists()){
+                try{ await set(visitorClickRef,true); }
+                catch(writeError){ console.warn("Unique picture click was not added:",writeError); }
+            }
+        }
+        const total=await getUniquePostClickCount(id);
         viewerClickCount.textContent="👆 "+total;
-
         const card=document.getElementById("post-"+id);
         const cardCount=card?.querySelector(".click-count span");
         if(cardCount) cardCount.textContent=String(total);
-
-        // Recalculate the signed-in member's total after Firebase commits.
         if(latestPostsSnapshot) updateOwnProfileStats();
-        if(openedSocialUid && socialProfileModal?.classList.contains("show")){
-            refreshSocialProfileStats(openedSocialUid);
-        }
+        if(openedSocialUid && socialProfileModal?.classList.contains("show")) refreshSocialProfileStats(openedSocialUid);
     }catch(error){
-        console.error("Post click count could not be saved:",error);
-        const current=await get(countRef).catch(()=>null);
-        viewerClickCount.textContent="👆 "+(current?.val()||0);
-        showToast("Click could not be counted. Check Firebase database permissions.");
+        console.error("Unique picture click count could not be read:",error);
+        viewerClickCount.textContent="👆 0";
     }
 }
 
@@ -6386,12 +6426,12 @@ function getProfileData(uid, fallback={}){
     };
 }
 
-function renderGallery(images,postId){
+function renderGallery(images,postId,isFirstVisiblePost=false){
     const safe=images.map(x=>esc(x));
     const cls=images.length===1?"one":images.length===2?"two":images.length===3?"three":"more";
     return `<div class="post-gallery ${cls}">${safe.slice(0,4).map((url,i)=>`
       <div class="gallery-item" data-post-id="${esc(postId)}" data-image-index="${i}">
-        <img src="${url}" alt="Community post picture ${i+1}">
+        <img src="${url}" loading="${isFirstVisiblePost&&i===0?"eager":"lazy"}" decoding="async" ${isFirstVisiblePost&&i===0?'fetchpriority="high"':""} alt="Community post picture ${i+1}">
         ${i===3 && images.length>4?`<div class="gallery-more">+${images.length-3}</div>`:""}
       </div>`).join("")}</div>`;
 }
@@ -6432,7 +6472,7 @@ function renderPosts(snapshot){
     posts.sort((a,b)=>(b.time||0)-(a.time||0));
     if(!posts.length){feed.appendChild(emptyFeed);return;}
     const visiblePosts=showAllPosts?posts:posts.slice(0,6);
-    visiblePosts.forEach(post=>{
+    visiblePosts.forEach((post,postIndex)=>{
         const article=document.createElement("article"); article.className="post"; article.id="post-"+post.id;
         const profile=getProfileData(post.uid,post); const images=getPostImages(post);
         article.innerHTML=`
@@ -6451,13 +6491,13 @@ function renderPosts(snapshot){
           </div>
           ${post.repostOf?`<div class="repost-note">🔁 Reposted from ${esc(post.originalName||getProfileData(post.originalUid||"",post).name)}</div>`:""}
           ${post.caption?`<div class="post-caption">${esc(post.caption)}</div>`:""}
-          <div class="post-image-wrap">${renderGallery(images,post.id)}</div>
+          <div class="post-image-wrap">${renderGallery(images,post.id,postIndex===0)}</div>
           <div class="post-actions">
             <button class="action-btn celebrate-me-btn" type="button">🎉 Celebrate Me</button>
             <button class="action-btn comment-toggle">💬 <span class="comment-count">0</span></button>
             <button class="action-btn share-btn">↗️ Share</button>
             <button class="action-btn repost-btn">🔁 Repost</button>
-            <div class="click-count">👆 <span>${post.clicks||0}</span></div>
+            <div class="click-count">👆 <span>0</span></div>
           </div>
           <div class="comments">
             <div class="comment-list"></div>
@@ -6473,6 +6513,7 @@ function renderPosts(snapshot){
         followButton.onclick=()=>follow(post.uid,followButton,followCount);
         setFollow(post.uid,followButton,followCount);
         article.querySelectorAll(".gallery-item").forEach((item,i)=>item.onclick=()=>clickPost(post.id,images[i]||images[0]));
+        refreshUniquePostClickCount(post.id,article);
         celebrateMeButton.onclick=()=>celebrateMe(post);
         commentSend.onclick=()=>comment(post.id,commentInput);
         commentInput.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();comment(post.id,commentInput);}};
@@ -6491,6 +6532,7 @@ function renderPosts(snapshot){
         comments(post.id,commentList);
         feed.appendChild(article);
     });
+    if(userId) refreshOwnUniquePostClickStats();
     viewAllPostsBtn.textContent=allPostsLoaded?"Show latest 6 posts":"Load older posts";
 }
 
@@ -6580,10 +6622,15 @@ async function refreshSocialProfileStats(uid){
         // Only the aggregate count is public. Individual payment records remain private.
         const celebrations=celebrationCountSnap.exists()?Math.max(0,Number(celebrationCountSnap.val())||0):0;
         let clicks=0;
-        if(postsSnap.exists()) postsSnap.forEach(child=>{
-            const post=child.val()||{};
-            if(post.uid===uid) clicks+=Math.max(0,Number(post.clicks??post.clickCount??0)||0);
-        });
+        if(postsSnap.exists()){
+            const clickJobs=[];
+            postsSnap.forEach(child=>{
+                const post=child.val()||{};
+                if(post.uid===uid) clickJobs.push(getUniquePostClickCount(child.key).catch(()=>0));
+            });
+            const counts=await Promise.all(clickJobs);
+            clicks=counts.reduce((sum,count)=>sum+Number(count||0),0);
+        }
         if(openedSocialUid===uid){
             socialFollowerStat.textContent=followers;
             socialCelebrationsStat.textContent=celebrations;
@@ -6610,7 +6657,8 @@ async function openSocialProfile(uid){
     const snap=latestPostsSnapshot; let posts=[];
     if(snap&&snap.exists()) snap.forEach(c=>{const d=c.val()||{};if(d.uid===uid&&(d.image||d.images))posts.push({id:c.key,...d});});
     posts.sort((a,b)=>(b.time||0)-(a.time||0));
-    socialClicksStat.textContent=posts.reduce((total,post)=>total+Math.max(0,Number(post.clicks??post.clickCount??0)||0),0);
+    const socialClickCounts=await Promise.all(posts.map(post=>getUniquePostClickCount(post.id).catch(()=>0)));
+    socialClicksStat.textContent=socialClickCounts.reduce((total,count)=>total+Number(count||0),0);
     socialProfilePosts.innerHTML=posts.length?"":"<div class=\"community-empty\">No posts yet.</div>";
     if(uid===userId){socialFollowBtn.style.display="none";}else{
         socialFollowBtn.style.display="block"; socialFollowBtn.textContent="Follow"; socialFollowBtn.classList.remove("following");
@@ -6619,8 +6667,8 @@ async function openSocialProfile(uid){
     }
     posts.forEach(post=>{
         const el=document.createElement("article");el.className="post";const images=getPostImages(post);const prof=getProfileData(post.uid,post);
-        el.innerHTML=`<div class="post-header"><img class="post-avatar" src="${esc(prof.photo)}"><div class="post-user"><div class="post-name">${esc(prof.name)}</div><div class="post-number">@${esc(prof.username)} · User #${esc(prof.userNumber)}</div><div class="post-time">${time(post.time)}</div></div></div>${post.caption?`<div class="post-caption">${esc(post.caption)}</div>`:""}<div class="post-image-wrap">${renderGallery(images,post.id)}</div><div class="post-actions"><button class="action-btn share-btn">↗️ Share</button><button class="action-btn repost-btn">🔁 Repost</button><div class="click-count">👆 ${post.clicks||0}</div></div>`;
-        el.querySelectorAll(".gallery-item").forEach((x,i)=>x.onclick=()=>clickPost(post.id,images[i]||images[0]));el.querySelector(".share-btn").onclick=()=>sharePost(post);el.querySelector(".repost-btn").onclick=()=>repostPost(post);socialProfilePosts.appendChild(el);
+        el.innerHTML=`<div class="post-header"><img class="post-avatar" src="${esc(prof.photo)}"><div class="post-user"><div class="post-name">${esc(prof.name)}</div><div class="post-number">@${esc(prof.username)} · User #${esc(prof.userNumber)}</div><div class="post-time">${time(post.time)}</div></div></div>${post.caption?`<div class="post-caption">${esc(post.caption)}</div>`:""}<div class="post-image-wrap">${renderGallery(images,post.id,false)}</div><div class="post-actions"><button class="action-btn share-btn">↗️ Share</button><button class="action-btn repost-btn">🔁 Repost</button><div class="click-count">👆 <span>0</span></div></div>`;
+        el.querySelectorAll(".gallery-item").forEach((x,i)=>x.onclick=()=>clickPost(post.id,images[i]||images[0]));el.querySelector(".share-btn").onclick=()=>sharePost(post);el.querySelector(".repost-btn").onclick=()=>repostPost(post);socialProfilePosts.appendChild(el);refreshUniquePostClickCount(post.id,el);
     });
 }
 socialProfileClose.onclick=()=>socialProfileModal.classList.remove("show"); socialProfileModal.onclick=e=>{if(e.target===socialProfileModal)socialProfileModal.classList.remove("show");};
