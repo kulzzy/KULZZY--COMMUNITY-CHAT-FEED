@@ -2352,17 +2352,17 @@ class="profile-menu">
 <div class="profile-stats">
 
 <div class="profile-stat">
-<strong id="followersStat" data-people-action="followers" role="button" tabindex="0" title="View people who follow you">0</strong>
+<strong id="followersStat">0</strong>
 <span>Followers</span>
 </div>
 
 <div class="profile-stat">
-<strong id="celebrationsStat" data-people-action="celebrations" role="button" tabindex="0" title="View people who celebrated you">0</strong>
+<strong id="celebrationsStat">0</strong>
 <span>Celebrations</span>
 </div>
 
 <div class="profile-stat">
-<strong id="clicksStat" data-people-action="clicks" role="button" tabindex="0" title="View people who clicked your pictures">0</strong>
+<strong id="clicksStat">0</strong>
 <span>Clicks</span>
 </div>
 
@@ -2722,145 +2722,6 @@ class="post-full-preview-gallery">
   padding:15px 5px;
   font-size:13px;
 }
-
-/* Clickable profile statistics and people lists */
-.profile-stat strong[data-people-action],
-.social-stat strong[data-people-action]{
-  cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-}
-.profile-stat strong[data-people-action]:active,
-.social-stat strong[data-people-action]:active{
-  opacity:.72;
-}
-.follow-count,.click-count{
-  cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-}
-.follow-count:active,.click-count:active{opacity:.7;}
-.notification-item.notification-clickable{
-  cursor:pointer;
-  transition:background .15s ease;
-}
-.notification-item.notification-clickable:active{
-  background:rgba(255,208,0,.14)!important;
-}
-.people-list-modal{
-  position:fixed;
-  inset:0;
-  z-index:16000;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  padding:14px;
-  background:rgba(0,8,14,.96);
-}
-.people-list-modal.show{display:flex;}
-.people-list-card{
-  width:100%;
-  max-width:520px;
-  max-height:88vh;
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-  background:#062d3e;
-  border:1px solid #ffd000;
-  border-radius:20px;
-  box-shadow:0 15px 50px rgba(0,0,0,.55);
-}
-.people-list-head{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:13px 14px;
-  border-bottom:1px solid #075a78;
-  background:#001b2b;
-}
-.people-list-title{
-  flex:1;
-  min-width:0;
-  color:#ffd000;
-  font-size:17px;
-  font-weight:bold;
-}
-.people-list-close{
-  width:38px;
-  height:38px;
-  flex:0 0 38px;
-  border:0;
-  border-radius:50%;
-  background:#ffd000;
-  color:#001b2b;
-  font-size:24px;
-  font-weight:bold;
-  cursor:pointer;
-}
-.people-list-body{
-  min-height:90px;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-}
-.people-list-row{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:11px 13px;
-  border-bottom:1px solid rgba(7,90,120,.5);
-}
-.people-list-row.profile-open{cursor:pointer;}
-.people-list-avatar{
-  width:44px;
-  height:44px;
-  flex:0 0 44px;
-  border:2px solid #ffd000;
-  border-radius:50%;
-  object-fit:cover;
-  background:#092331;
-}
-.people-list-main{flex:1;min-width:0;}
-.people-list-name{
-  color:#ffd000;
-  font-size:14px;
-  font-weight:bold;
-  overflow-wrap:anywhere;
-}
-.people-list-detail{
-  margin-top:3px;
-  color:#9db0ba;
-  font-size:11px;
-  line-height:1.35;
-}
-.people-list-follow{
-  flex:0 0 auto;
-  min-width:82px;
-  border:1px solid #ffd000;
-  border-radius:18px;
-  padding:8px 10px;
-  background:transparent;
-  color:#ffd000;
-  font-size:11px;
-  font-weight:bold;
-  cursor:pointer;
-}
-.people-list-follow.following{
-  background:#ffd000;
-  color:#001b2b;
-}
-.people-list-empty{
-  padding:28px 14px;
-  text-align:center;
-  color:#9db0ba;
-  font-size:13px;
-  line-height:1.5;
-}
-@media(max-width:500px){
-  .people-list-modal{padding:10px;}
-  .people-list-card{max-height:90vh;}
-  .people-list-row{gap:8px;padding:10px;}
-  .people-list-avatar{width:40px;height:40px;flex-basis:40px;}
-  .people-list-follow{min-width:76px;padding:8px 7px;}
-}
 </style>
 
 <section id="kulzzyLeadership">
@@ -3141,9 +3002,9 @@ Cancel
       <button id="socialProfileClose" class="social-profile-close" type="button">×</button>
     </div>
     <div class="social-stats">
-      <div class="social-stat"><strong id="socialFollowerStat" data-people-action="followers" role="button" tabindex="0" title="View followers">0</strong><span>Followers</span></div>
-      <div class="social-stat"><strong id="socialCelebrationsStat" data-people-action="celebrations" role="button" tabindex="0" title="View celebrants">0</strong><span>Celebrations</span></div>
-      <div class="social-stat"><strong id="socialClicksStat" data-people-action="clicks" role="button" tabindex="0" title="View picture clickers">0</strong><span>Clicks</span></div>
+      <div class="social-stat"><strong id="socialFollowerStat">0</strong><span>Followers</span></div>
+      <div class="social-stat"><strong id="socialCelebrationsStat">0</strong><span>Celebrations</span></div>
+      <div class="social-stat"><strong id="socialClicksStat">0</strong><span>Clicks</span></div>
     </div>
     <div class="social-profile-actions">
       <button id="socialFollowBtn" type="button">Follow</button>
@@ -3151,17 +3012,6 @@ Cancel
     <div class="profile-posts-title">Posts</div>
     <div id="socialProfilePosts" class="profile-post-list"></div>
   </div>
-</div>
-
-<!-- FOLLOWERS / CELEBRANTS / PICTURE CLICKERS -->
-<div id="peopleListModal" class="people-list-modal" aria-hidden="true">
-  <section class="people-list-card" role="dialog" aria-modal="true" aria-labelledby="peopleListTitle">
-    <div class="people-list-head">
-      <div id="peopleListTitle" class="people-list-title">People</div>
-      <button id="peopleListClose" class="people-list-close" type="button" aria-label="Close">×</button>
-    </div>
-    <div id="peopleListBody" class="people-list-body"></div>
-  </section>
 </div>
 
 <!-- FIRST SIGN-IN WELCOME -->
@@ -3279,7 +3129,7 @@ class="notification-list">
       <div id="monetizationRequirementCelebrations">○ 5,000 celebrations</div>
       <div id="monetizationRequirementCurrency">○ K125,000 kulzzy currency</div>
     </div>
-    <div id="monetizationStatus" class="monetization-status" hidden></div>
+    <div id="monetizationStatus" class="monetization-status">Progress is based on the profile statistics and recognised payment records available in this app. Withdrawals are not connected to a verified payout system.</div>
   </section>
 </div>
 
@@ -3352,9 +3202,6 @@ import{
     setPersistence,
     browserLocalPersistence
 }from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-// Initialize before any async startup callbacks can access this value.
-let allOwnPostIds=null;
 
 
 /* =========================
@@ -3904,7 +3751,6 @@ function startAuthListener(){
         /* Wait for Firebase to restore the saved login before showing the sign-up/login gate. */
         onAuthStateChanged(auth,async user=>{
             firebaseUser=user;
-            window.dispatchEvent(new Event("kulzzy-auth-state-received"));
 
             if(user){
                 setStableUserId(user.uid);
@@ -4666,15 +4512,9 @@ menuShareProfile.onclick=async()=>{
 };
 
 
-const uniquePostClickCounts=Object.create(null);
-const uniquePostClickers=Object.create(null);
-const uniquePostClickFetchedAt=Object.create(null);
-const uniquePostClickPromises=Object.create(null);
+const uniquePostClickCounts={};
 
 function countOwnPostClicks(){
-    if(Array.isArray(allOwnPostIds)){
-        return allOwnPostIds.reduce((total,postId)=>total+Number(uniquePostClickCounts[postId]||0),0);
-    }
     let total=0;
     if(latestPostsSnapshot && latestPostsSnapshot.exists()){
         latestPostsSnapshot.forEach(child=>{
@@ -4685,30 +4525,11 @@ function countOwnPostClicks(){
     return total;
 }
 
-async function getUniquePostClickCount(postId,forceRefresh=false){
-    const now=Date.now();
-    const hasCached=Object.prototype.hasOwnProperty.call(uniquePostClickers,postId);
-    if(!forceRefresh && hasCached && now-(uniquePostClickFetchedAt[postId]||0)<15000){
-        return Number(uniquePostClickCounts[postId]||0);
-    }
-    if(!forceRefresh && uniquePostClickPromises[postId]){
-        return uniquePostClickPromises[postId];
-    }
-    const request=(async()=>{
-        const snap=await get(ref(db,`postImageClicks/${postId}`));
-        const clickers=snap.exists()?(snap.val()||{}):{};
-        const count=Object.keys(clickers).length;
-        uniquePostClickers[postId]=clickers;
-        uniquePostClickCounts[postId]=count;
-        uniquePostClickFetchedAt[postId]=Date.now();
-        return count;
-    })();
-    uniquePostClickPromises[postId]=request;
-    try{
-        return await request;
-    }finally{
-        if(uniquePostClickPromises[postId]===request) delete uniquePostClickPromises[postId];
-    }
+async function getUniquePostClickCount(postId){
+    const snap=await get(ref(db,`postImageClicks/${postId}`));
+    const count=snap.exists()?Object.keys(snap.val()||{}).length:0;
+    uniquePostClickCounts[postId]=count;
+    return count;
 }
 
 async function refreshUniquePostClickCount(postId,postElement){
@@ -5246,7 +5067,6 @@ postPictureBtn.onclick=async()=>{
         {
             type: "post",
             uid: userId,
-            postId: postRef.key,
             name: savedProfile.name,
             text: savedProfile.name +
                 " posted " +
@@ -6003,10 +5823,14 @@ async function deleteUploadedPicture(postId,imageIndex){
 
         images.splice(index,1);
 
-        await update(ref(db),{
-            [`communityPosts/${postId}/images`]:images.length?images:null,
-            [`communityPosts/${postId}/image`]:images.length?images[0]:null
-        });
+        if(!images.length){
+            await update(ref(db),{[`communityPosts/${postId}`]:null});
+        }else{
+            await update(ref(db),{
+                [`communityPosts/${postId}/images`]:images,
+                [`communityPosts/${postId}/image`]:images[0]
+            });
+        }
     }catch(error){
         console.error("Delete picture error:",error);
         throw error;
@@ -6043,10 +5867,14 @@ async function deleteSelectedUploadedPictures(){
                 if(index>=0 && index<images.length) images.splice(index,1);
             });
 
-            await update(ref(db),{
-                [`communityPosts/${postId}/images`]:images.length?images:null,
-                [`communityPosts/${postId}/image`]:images.length?images[0]:null
-            });
+            if(!images.length){
+                await update(ref(db),{[`communityPosts/${postId}`]:null});
+            }else{
+                await update(ref(db),{
+                    [`communityPosts/${postId}/images`]:images,
+                    [`communityPosts/${postId}/image`]:images[0]
+                });
+            }
         }
 
         showToast("Selected pictures deleted.");
@@ -6209,29 +6037,36 @@ onValue(
    FOLLOWER COUNT
 ========================= */
 
-const followerCountCache=Object.create(null);
-const followerCountFetchedAt=Object.create(null);
-const followerCountPromises=Object.create(null);
+async function getFollowerCount(
+    owner
+){
 
-async function getFollowerCount(owner){
-    const now=Date.now();
-    if(followerCountFetchedAt[owner] && now-followerCountFetchedAt[owner]<15000){
-        return Number(followerCountCache[owner]||0);
-    }
-    if(followerCountPromises[owner]) return followerCountPromises[owner];
-    const request=(async()=>{
-        const snap=await get(ref(db,`followers/${owner}`));
-        const count=snap.exists()
-            ? Object.keys(snap.val()||{}).filter(key=>key!=="count").length
+    try{
+
+        const snap=
+            await get(
+                ref(
+                    db,
+                    `followers/${owner}`
+                )
+            );
+
+        return snap.exists()
+            ? Object.keys(
+                snap.val() || {}
+              ).filter(key => key !== "count").length
             : 0;
-        followerCountCache[owner]=count;
-        followerCountFetchedAt[owner]=Date.now();
-        return count;
-    })();
-    followerCountPromises[owner]=request;
-    try{return await request;}
-    catch(error){console.error("Follower count read failed:",error);return 0;}
-    finally{if(followerCountPromises[owner]===request)delete followerCountPromises[owner];}
+
+    }catch(error){
+
+        console.error(
+            error
+        );
+
+        return 0;
+
+    }
+
 }
 
 
@@ -6377,7 +6212,7 @@ async function like(
    CLICK COUNT
 ========================= */
 
-async function clickPost(id,url,postOwnerUid=""){
+async function clickPost(id,url){
     document.body.classList.add("image-viewer-open");
     viewerImage.src=url;
     imageViewer.classList.add("show");
@@ -6388,45 +6223,15 @@ async function clickPost(id,url,postOwnerUid=""){
             const visitorClickRef=ref(db,`postImageClicks/${id}/${userId}`);
             const existing=await get(visitorClickRef);
             if(!existing.exists()){
-                let clickWasRecorded=false;
-                try{
-                    await set(visitorClickRef,true);
-                    clickWasRecorded=true;
-                    const localClickers={...(uniquePostClickers[id]||{})};
-                    localClickers[userId]=true;
-                    uniquePostClickers[id]=localClickers;
-                    uniquePostClickCounts[id]=Object.keys(localClickers).length;
-                    uniquePostClickFetchedAt[id]=Date.now();
-                }catch(writeError){
-                    console.warn("Unique picture click was not added:",writeError);
-                }
-
-                if(clickWasRecorded && postOwnerUid && postOwnerUid!==userId){
-                    try{
-                        const clickerName=savedProfile?.name||"A community member";
-                        await set(push(ref(db,"notifications/"+postOwnerUid)),{
-                            type:"post_click",
-                            uid:postOwnerUid,
-                            fromUid:userId,
-                            postId:id,
-                            name:clickerName,
-                            text:clickerName+" clicked on your picture.",
-                            time:Date.now()
-                        });
-                    }catch(notificationError){
-                        console.warn("Picture click notification could not be saved:",notificationError);
-                    }
-                }
+                try{ await set(visitorClickRef,true); }
+                catch(writeError){ console.warn("Unique picture click was not added:",writeError); }
             }
         }
-        const total=await getUniquePostClickCount(id,true);
+        const total=await getUniquePostClickCount(id);
         viewerClickCount.textContent="👆 "+total;
         const card=document.getElementById("post-"+id);
         const cardCount=card?.querySelector(".click-count span");
         if(cardCount) cardCount.textContent=String(total);
-        const socialCard=[...document.querySelectorAll("#socialProfilePosts .post")].find(el=>el.querySelector(".click-count") && el.querySelectorAll(".gallery-item").length && el.querySelector(".gallery-item")?.getAttribute("data-post-id")===id);
-        const socialCardCount=socialCard?.querySelector(".click-count span");
-        if(socialCardCount) socialCardCount.textContent=String(total);
         if(latestPostsSnapshot) updateOwnProfileStats();
         if(openedSocialUid && socialProfileModal?.classList.contains("show")) refreshSocialProfileStats(openedSocialUid);
     }catch(error){
@@ -6659,7 +6464,6 @@ async function repostPost(post){
 
 function renderPosts(snapshot){
     latestPostsSnapshot=snapshot;
-    if(!allPostsLoaded)allOwnPostIds=null;
     updateOwnProfileStats();
     feed.innerHTML="";
     if(!snapshot.exists()){feed.appendChild(emptyFeed);return;}
@@ -6683,7 +6487,7 @@ function renderPosts(snapshot){
                 </div>
               </div>
             </div>
-            <div class="follow-wrap"><button class="follow-btn" type="button">Follow Me</button><span class="follow-count" role="button" tabindex="0" title="View followers">0 followers</span></div>
+            <div class="follow-wrap"><button class="follow-btn">Follow Me</button><span class="follow-count">0 followers</span></div>
           </div>
           ${post.repostOf?`<div class="repost-note">🔁 Reposted from ${esc(post.originalName||getProfileData(post.originalUid||"",post).name)}</div>`:""}
           ${post.caption?`<div class="post-caption">${esc(post.caption)}</div>`:""}
@@ -6693,7 +6497,7 @@ function renderPosts(snapshot){
             <button class="action-btn comment-toggle">💬 <span class="comment-count">0</span></button>
             <button class="action-btn share-btn">↗️ Share</button>
             <button class="action-btn repost-btn">🔁 Repost</button>
-            <div class="click-count" role="button" tabindex="0" title="View people who clicked this picture">👆 <span>0</span></div>
+            <div class="click-count">👆 <span>0</span></div>
           </div>
           <div class="comments">
             <div class="comment-list"></div>
@@ -6708,12 +6512,7 @@ function renderPosts(snapshot){
         userClick.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openSocialProfile(post.uid);}};
         followButton.onclick=()=>follow(post.uid,followButton,followCount);
         setFollow(post.uid,followButton,followCount);
-        followCount.onclick=()=>openFollowerList(post.uid);
-        followCount.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openFollowerList(post.uid);}};
-        const postClickCount=article.querySelector(".click-count");
-        postClickCount.onclick=()=>openClickersList(post.uid,post.id);
-        postClickCount.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openClickersList(post.uid,post.id);}};
-        article.querySelectorAll(".gallery-item").forEach((item,i)=>item.onclick=()=>clickPost(post.id,images[i]||images[0],post.uid));
+        article.querySelectorAll(".gallery-item").forEach((item,i)=>item.onclick=()=>clickPost(post.id,images[i]||images[0]));
         refreshUniquePostClickCount(post.id,article);
         celebrateMeButton.onclick=()=>celebrateMe(post);
         commentSend.onclick=()=>comment(post.id,commentInput);
@@ -6757,280 +6556,6 @@ const socialProfilePosts=$("socialProfilePosts");
 const socialProfileClose=$("socialProfileClose");
 let openedSocialUid="";
 
-const peopleListModal=$("peopleListModal");
-const peopleListTitle=$("peopleListTitle");
-const peopleListBody=$("peopleListBody");
-const peopleListClose=$("peopleListClose");
-
-function closePeopleList(){
-    peopleListModal.classList.remove("show");
-    peopleListModal.setAttribute("aria-hidden","true");
-}
-peopleListClose.onclick=closePeopleList;
-peopleListModal.onclick=event=>{if(event.target===peopleListModal)closePeopleList();};
-
-function openPeopleListShell(title){
-    peopleListTitle.textContent=title;
-    peopleListBody.innerHTML='<div class="people-list-empty">Loading...</div>';
-    peopleListModal.classList.add("show");
-    peopleListModal.setAttribute("aria-hidden","false");
-}
-
-function renderPeopleList(rows,options={}){
-    peopleListBody.innerHTML="";
-    if(!rows.length){
-        const empty=document.createElement("div");
-        empty.className="people-list-empty";
-        empty.textContent=options.emptyText||"No people to show yet.";
-        peopleListBody.appendChild(empty);
-        return;
-    }
-    rows.forEach(person=>{
-        const uid=person.uid||"";
-        const profile=uid?getProfileData(uid,person):{
-            name:person.name||"Listener",
-            photo:person.photo||DEFAULT_PROFILE,
-            username:person.username||"",
-            userNumber:person.userNumber||""
-        };
-        const row=document.createElement("div");
-        row.className="people-list-row"+(uid?" profile-open":"");
-        const avatar=document.createElement("img");
-        avatar.className="people-list-avatar";
-        avatar.src=profile.photo||DEFAULT_PROFILE;
-        avatar.alt=profile.name||"Community member";
-        const main=document.createElement("div");
-        main.className="people-list-main";
-        const name=document.createElement("div");
-        name.className="people-list-name";
-        name.textContent=profile.name||person.name||"Listener";
-        const detail=document.createElement("div");
-        detail.className="people-list-detail";
-        detail.textContent=person.subtitle||(profile.username?"@"+profile.username:"");
-        main.append(name,detail);
-        row.append(avatar,main);
-
-        if(options.mode==="followers" && uid && userId && uid!==userId){
-            const button=document.createElement("button");
-            button.type="button";
-            button.className="people-list-follow";
-            let isFollowing=!!(options.followingMap&&options.followingMap[uid]);
-            button.textContent=isFollowing?"Following":"Follow Back";
-            button.classList.toggle("following",isFollowing);
-            button.onclick=async event=>{
-                event.stopPropagation();
-                button.disabled=true;
-                try{
-                    await setFollowingRecord(uid,!isFollowing);
-                    isFollowing=!isFollowing;
-                    button.textContent=isFollowing?"Following":"Follow Back";
-                    button.classList.toggle("following",isFollowing);
-                }catch(error){
-                    console.error("Follow-back action failed:",error);
-                    showToast("Could not update follow. Please try again.");
-                }finally{button.disabled=false;}
-            };
-            row.appendChild(button);
-        }
-        if(uid){
-            row.onclick=()=>{
-                closePeopleList();
-                openSocialProfile(uid);
-            };
-        }
-        peopleListBody.appendChild(row);
-    });
-}
-
-async function openFollowerList(ownerUid){
-    if(!ownerUid)return;
-    openPeopleListShell("Followers");
-    try{
-        const [followersSnap,followingSnap]=await Promise.all([
-            get(ref(db,`followers/${ownerUid}`)),
-            userId?get(ref(db,`following/${userId}`)):Promise.resolve(null)
-        ]);
-        const followingMap=followingSnap&&followingSnap.exists()?(followingSnap.val()||{}):{};
-        const rows=[];
-        if(followersSnap.exists()){
-            followersSnap.forEach(child=>{
-                if(child.key==="count")return;
-                const record=child.val()||{};
-                const uid=record.uid||child.key;
-                const profile=profilesCache[uid]||{};
-                rows.push({
-                    uid,
-                    name:profile.name||record.name||record.displayName||"Listener",
-                    photo:profile.photo||record.photo||record.avatar||DEFAULT_PROFILE,
-                    username:profile.username||record.username||"",
-                    userNumber:profile.userNumber||record.userNumber||"",
-                    time:record.time||record.createdAt||0,
-                    subtitle:record.time||record.createdAt?"Followed "+time(record.time||record.createdAt):""
-                });
-            });
-        }
-        rows.sort((a,b)=>(b.time||0)-(a.time||0));
-        renderPeopleList(rows,{
-            mode:"followers",
-            followingMap,
-            emptyText:"Nobody has followed this profile yet."
-        });
-    }catch(error){
-        console.error("Follower list could not be loaded:",error);
-        renderPeopleList([],{emptyText:"Unable to load followers. Please try again."});
-    }
-}
-
-function collectCelebrationPeople(value){
-    const people=[];
-    const seen=new Set();
-    const ignored=new Set(["count","total","totalamount","amount","amountnaira","currency","status","metadata"]);
-    const uidKeys=["uid","userId","userUid","fromUid","payerUid","payerId","senderUid","senderId","celebratorUid","celebrantUid","customerUid","customerId","memberUid","accountUid"];
-    const nameKeys=["name","displayName","fullName","fromName","payerName","senderName","celebratorName","celebrantName","customerName","memberName","userName"];
-    function walk(node,key=""){
-        if(!node||typeof node!=="object")return;
-        if(Array.isArray(node)){
-            node.forEach((child,index)=>walk(child,String(index)));
-            return;
-        }
-        const nested=node.user||node.payer||node.sender||node.customer||node.celebrator||node.celebrant||{};
-        let uid="";
-        for(const k of uidKeys){if(node[k]){uid=String(node[k]);break;}}
-        if(!uid&&nested&&typeof nested==="object"&&nested.uid)uid=String(nested.uid);
-        let name="";
-        for(const k of nameKeys){if(node[k]){name=String(node[k]);break;}}
-        if(!name&&nested&&typeof nested==="object")name=String(nested.name||nested.displayName||nested.fullName||"");
-        if(!name){
-            for(const k of ["payer","sender","customer","celebrator","celebrant","user"]){
-                if(typeof node[k]==="string"&&node[k].trim()){name=node[k].trim();break;}
-            }
-        }
-        if(!uid&&key&&profilesCache[key])uid=key;
-        const rawTime=node.time||node.createdAt||node.paidAt||node.timestamp||0;
-        const recordTime=typeof rawTime==="number"?(rawTime||0):(Date.parse(rawTime)||0);
-        if(uid||name){
-            const identity=uid||name.toLowerCase()+"_"+recordTime;
-            if(!seen.has(identity)){
-                seen.add(identity);
-                const profile=uid?getProfileData(uid,{name,photo:node.photo||node.avatar||nested.photo||""}):{};
-                people.push({
-                    uid,
-                    name:profile.name||name||"Listener",
-                    photo:profile.photo||node.photo||node.avatar||nested.photo||DEFAULT_PROFILE,
-                    username:profile.username||"",
-                    time:recordTime,
-                    subtitle:recordTime?"Celebrated "+time(recordTime):""
-                });
-            }
-            return;
-        }
-        Object.entries(node).forEach(([childKey,child])=>{
-            if(!ignored.has(childKey.toLowerCase()))walk(child,childKey);
-        });
-    }
-    walk(value);
-    people.sort((a,b)=>(b.time||0)-(a.time||0));
-    return people;
-}
-
-async function openCelebrantsList(ownerUid){
-    if(!ownerUid)return;
-    openPeopleListShell("People Who Celebrated");
-    try{
-        // Read only the public identity list. Verified payment records under
-        // celebrations/{uid} can contain private payment details and stay private.
-        const snapshot=await get(ref(db,`celebrationPeople/${ownerUid}`));
-        const people=snapshot.exists()?collectCelebrationPeople(snapshot.val()):[];
-        renderPeopleList(people,{
-            emptyText:"The celebration total is available, but no public celebrant names have been recorded yet."
-        });
-    }catch(error){
-        console.error("Celebrant list could not be loaded:",error);
-        renderPeopleList([],{emptyText:"Unable to load celebrants. Please try again."});
-    }
-}
-
-async function openClickersList(ownerUid,postId=""){
-    if(!ownerUid)return;
-    openPeopleListShell("People Who Clicked Pictures");
-    try{
-        let posts=[];
-        if(postId){
-            let found=null;
-            if(latestPostsSnapshot&&latestPostsSnapshot.exists()){
-                latestPostsSnapshot.forEach(child=>{
-                    if(child.key===postId)found={id:child.key,...(child.val()||{})};
-                });
-            }
-            if(!found){
-                const postSnap=await get(ref(db,`communityPosts/${postId}`));
-                if(postSnap.exists())found={id:postId,...(postSnap.val()||{})};
-            }
-            if(found&&found.uid===ownerUid)posts=[found];
-        }else{
-            let postsSnap=latestPostsSnapshot;
-            if(!allPostsLoaded)postsSnap=await get(ref(db,"communityPosts"));
-            if(postsSnap&&postsSnap.exists()){
-                postsSnap.forEach(child=>{
-                    const post=child.val()||{};
-                    if(post.uid===ownerUid&&(post.image||post.images))posts.push({id:child.key,...post});
-                });
-            }
-        }
-        const totals=Object.create(null);
-        let totalPictureClicks=0;
-        if(ownerUid===userId&&!postId)allOwnPostIds=posts.map(post=>post.id);
-        for(let i=0;i<posts.length;i+=10){
-            const batch=posts.slice(i,i+10);
-            await Promise.all(batch.map(async post=>{
-                try{
-                    await getUniquePostClickCount(post.id);
-                    const clickers=uniquePostClickers[post.id]||{};
-                    const clickerIds=Object.keys(clickers).filter(uid=>uid&&clickers[uid]!==false&&clickers[uid]!==null);
-                    totalPictureClicks+=clickerIds.length;
-                    clickerIds.forEach(uid=>{
-                        if(!totals[uid])totals[uid]={uid,count:0};
-                        totals[uid].count++;
-                    });
-                }catch(error){console.warn("Could not load picture clickers for post:",post.id,error);}
-            }));
-        }
-        if(ownerUid===userId&&!postId)clicksStat.textContent=String(totalPictureClicks);
-        if(openedSocialUid===ownerUid&&!postId)socialClicksStat.textContent=String(totalPictureClicks);
-        const rows=Object.values(totals).map(person=>{
-            const profile=getProfileData(person.uid,{});
-            return {
-                ...person,
-                name:profile.name,
-                photo:profile.photo,
-                username:profile.username,
-                subtitle:postId?"Clicked this picture":"Clicked "+person.count+" of your pictures"
-            };
-        }).sort((a,b)=>b.count-a.count);
-        renderPeopleList(rows,{emptyText:posts.length?"Nobody has clicked this picture yet.":"No pictures are available to show."});
-    }catch(error){
-        console.error("Picture clicker list could not be loaded:",error);
-        renderPeopleList([],{emptyText:"Unable to load picture clickers. Please try again."});
-    }
-}
-
-function bindPeopleStat(element,action){
-    if(!element)return;
-    element.onclick=action;
-    element.onkeydown=event=>{
-        if(event.key==="Enter"||event.key===" "){
-            event.preventDefault();
-            action();
-        }
-    };
-}
-bindPeopleStat(followersStat,()=>openFollowerList(userId));
-bindPeopleStat(celebrationsStat,()=>openCelebrantsList(userId));
-bindPeopleStat(clicksStat,()=>openClickersList(userId));
-bindPeopleStat(socialFollowerStat,()=>openFollowerList(openedSocialUid));
-bindPeopleStat(socialCelebrationsStat,()=>openCelebrantsList(openedSocialUid));
-bindPeopleStat(socialClicksStat,()=>openClickersList(openedSocialUid));
-
 async function getFollowingCount(uid){try{const s=await get(ref(db,`following/${uid}`));return s.exists()?Object.keys(s.val()||{}).length:0;}catch(e){return 0;}}
 async function setFollowingRecord(owner,following){
     if(!userId || !owner || owner===userId) return;
@@ -7049,8 +6574,6 @@ async function setFollowingRecord(owner,following){
 
     // One atomic multi-location update keeps both sides of the relationship in sync.
     await update(ref(db),updates);
-    delete followerCountCache[owner];
-    delete followerCountFetchedAt[owner];
 
     if(following){
         try{
@@ -7145,17 +6668,7 @@ async function openSocialProfile(uid){
     posts.forEach(post=>{
         const el=document.createElement("article");el.className="post";const images=getPostImages(post);const prof=getProfileData(post.uid,post);
         el.innerHTML=`<div class="post-header"><img class="post-avatar" src="${esc(prof.photo)}"><div class="post-user"><div class="post-name">${esc(prof.name)}</div><div class="post-number">@${esc(prof.username)} · User #${esc(prof.userNumber)}</div><div class="post-time">${time(post.time)}</div></div></div>${post.caption?`<div class="post-caption">${esc(post.caption)}</div>`:""}<div class="post-image-wrap">${renderGallery(images,post.id,false)}</div><div class="post-actions"><button class="action-btn share-btn">↗️ Share</button><button class="action-btn repost-btn">🔁 Repost</button><div class="click-count">👆 <span>0</span></div></div>`;
-        el.querySelectorAll(".gallery-item").forEach((x,i)=>x.onclick=()=>clickPost(post.id,images[i]||images[0],post.uid));
-        const postClickCount=el.querySelector(".click-count");
-        postClickCount.setAttribute("role","button");
-        postClickCount.setAttribute("tabindex","0");
-        postClickCount.setAttribute("title","View people who clicked this picture");
-        postClickCount.onclick=()=>openClickersList(post.uid,post.id);
-        postClickCount.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openClickersList(post.uid,post.id);}};
-        el.querySelector(".share-btn").onclick=()=>sharePost(post);
-        el.querySelector(".repost-btn").onclick=()=>repostPost(post);
-        socialProfilePosts.appendChild(el);
-        refreshUniquePostClickCount(post.id,el);
+        el.querySelectorAll(".gallery-item").forEach((x,i)=>x.onclick=()=>clickPost(post.id,images[i]||images[0]));el.querySelector(".share-btn").onclick=()=>sharePost(post);el.querySelector(".repost-btn").onclick=()=>repostPost(post);socialProfilePosts.appendChild(el);refreshUniquePostClickCount(post.id,el);
     });
 }
 socialProfileClose.onclick=()=>socialProfileModal.classList.remove("show"); socialProfileModal.onclick=e=>{if(e.target===socialProfileModal)socialProfileModal.classList.remove("show");};
@@ -7245,69 +6758,6 @@ function getCombinedNotifications(){
     const b=globalNotificationItems.map(item=>({...item,notificationKey:"global_"+item.id,notificationSource:"global"}));
     return a.concat(b).sort((x,y)=>notificationTimestamp(y)-notificationTimestamp(x));
 }
-function notificationHasAction(item){
-    if(item?.url||item?.link||item?.actionUrl)return true;
-    const type=String(item?.type||"").toLowerCase();
-    if(type==="follow")return !!(item.fromUid||item.actorUid||item.senderUid);
-    if(["post_click","click","image_click","picture_click"].includes(type))return !!item.postId;
-    if(["celebration","celebrated","celebrate"].includes(type))return true;
-    if(["post","comment","like","reply"].includes(type))return !!(item.postId||item.uid||item.fromUid);
-    return !!(item.profileUid||item.targetUid);
-}
-
-async function navigateToCommunityPost(postId){
-    if(!postId)return;
-    if(!allPostsLoaded){
-        try{
-            const snapshot=await get(ref(db,"communityPosts"));
-            latestPostsSnapshot=snapshot;
-            allPostsLoaded=true;
-            showAllPosts=true;
-            renderPosts(snapshot);
-        }catch(error){console.error("Could not load notification post:",error);}
-    }
-    const target=document.getElementById("post-"+postId);
-    if(target){
-        target.scrollIntoView({behavior:"smooth",block:"center"});
-        target.style.outline="2px solid #ffd000";
-        setTimeout(()=>{target.style.outline="";},2200);
-    }else{
-        showToast("This post is no longer available.");
-    }
-}
-
-async function handleNotificationClick(item){
-    notificationPanel.classList.remove("show");
-    const directUrl=item?.url||item?.link||item?.actionUrl||"";
-    if(directUrl){
-        try{
-            const url=new URL(directUrl,location.href);
-            if(url.protocol==="http:"||url.protocol==="https:")location.href=url.toString();
-        }catch(error){console.warn("Invalid notification link:",error);}
-        return;
-    }
-    const type=String(item?.type||"").toLowerCase();
-    if(type==="follow"){
-        const followerUid=item.fromUid||item.actorUid||item.senderUid||"";
-        if(followerUid)openSocialProfile(followerUid);
-        return;
-    }
-    if(["post_click","click","image_click","picture_click"].includes(type)){
-        await openClickersList(item.uid||userId,item.postId||"");
-        return;
-    }
-    if(["celebration","celebrated","celebrate"].includes(type)){
-        await openCelebrantsList(item.uid||item.targetUid||userId);
-        return;
-    }
-    if(item.postId){
-        await navigateToCommunityPost(item.postId);
-        return;
-    }
-    const profileUid=item.profileUid||item.targetUid||item.fromUid||item.actorUid||item.uid||"";
-    if(profileUid)openSocialProfile(profileUid);
-}
-
 function renderCombinedNotifications(){
     if(!notificationList)return;
     const items=getCombinedNotifications();
@@ -7323,19 +6773,6 @@ function renderCombinedNotifications(){
         const read=!!notificationReadStatus[item.notificationKey];
         const div=document.createElement("div");
         div.className="notification-item"+(read?" notification-read":" notification-unread");
-        const actionable=notificationHasAction(item);
-        if(actionable){
-            div.classList.add("notification-clickable");
-            div.setAttribute("role","button");
-            div.setAttribute("tabindex","0");
-            div.onclick=()=>handleNotificationClick(item);
-            div.onkeydown=event=>{
-                if(event.key==="Enter"||event.key===" "){
-                    event.preventDefault();
-                    handleNotificationClick(item);
-                }
-            };
-        }
         if(item.notificationSource==="global"){
             const label=document.createElement("div");
             label.textContent="KULZZY RADIO";
@@ -7554,75 +6991,6 @@ window.addEventListener(
 </script>
 
 <script type="module" src="./leadership.js"></script>
-<script type="module">
-/* Live public vote totals for the current Nigeria-day challenge.
-   Totals are read from the existing daily vote records, so clearing the
-   day's vote records resets every displayed count to zero automatically. */
-import { getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-try {
-  const db = getDatabase(getApp());
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Africa/Lagos", year: "numeric", month: "2-digit", day: "2-digit"
-  }).formatToParts(new Date());
-  const dateParts = {};
-  parts.forEach(part => dateParts[part.type] = part.value);
-  const today = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
-  let voteCounts = {};
-
-  function paintVoteCounts() {
-    const list = document.getElementById("klcContestants");
-    if (!list) return;
-    list.querySelectorAll("[data-vote-uid]").forEach(button => {
-      const uid = button.getAttribute("data-vote-uid");
-      if (!uid) return;
-      const row = button.parentElement;
-      if (!row) return;
-      let badge = row.querySelector("[data-live-vote-count]");
-      if (!badge) {
-        badge = document.createElement("div");
-        badge.setAttribute("data-live-vote-count", uid);
-        badge.style.cssText = "flex:0 0 auto;min-width:48px;text-align:center;color:#ffd700;font-size:12px;font-weight:900;line-height:1.35;";
-        row.insertBefore(badge, button);
-      }
-      const count = Number(voteCounts[uid] || 0);
-      badge.textContent = `${count} ${count === 1 ? "vote" : "votes"}`;
-      badge.setAttribute("aria-label", `${count} votes`);
-    });
-  }
-
-  const contestantsBox = document.getElementById("klcContestants");
-  if (contestantsBox) {
-    new MutationObserver(paintVoteCounts).observe(contestantsBox, { childList: true, subtree: true });
-  }
-
-  onValue(ref(db, `leadershipDailyVotes/${today}`), snapshot => {
-    voteCounts = {};
-    if (snapshot.exists()) {
-      snapshot.forEach(child => {
-        const vote = child.val() || {};
-        if (vote.candidateUid) voteCounts[vote.candidateUid] = (voteCounts[vote.candidateUid] || 0) + 1;
-      });
-    }
-    paintVoteCounts();
-  }, error => console.error("Leadership public vote counts:", error));
-} catch (error) {
-  console.error("Leadership vote count display could not start:", error);
-}
-</script>
-
-<script>
-/* Silent startup fallback: never display technical startup errors to visitors. */
-(function(){
-  window.setTimeout(function(){
-    var app = document.querySelector('.app');
-    if (app && getComputedStyle(app).display === 'none') {
-      app.style.display = 'block';
-    }
-  }, 12000);
-})();
-</script>
 
 </body>
 </html>
