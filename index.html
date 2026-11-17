@@ -1066,6 +1066,9 @@ body.image-viewer-open{
     border-bottom:1px solid #075a78;
     font-size:13px;
 }
+.notification-item.actionable{cursor:pointer;}
+.notification-item.actionable:active{background:rgba(255,208,0,.12)!important;}
+.notification-item.actionable::after{content:"›";float:right;color:#ffd000;font-size:18px;font-weight:bold;margin-left:8px;}
 
 /* =========================
    VIEWER
@@ -1240,9 +1243,25 @@ body.image-viewer-open{
 .user-result-main{min-width:0;flex:1}.user-result-name{font-weight:bold;color:#ffd000}.user-result-number{font-size:11px;color:#9db0ba;margin-top:2px}
 .profile-number{display:inline-block;margin-top:5px;color:#9db0ba;font-size:12px}
 .social-profile-modal{position:fixed;inset:0;background:rgba(0,8,14,.96);z-index:11000;display:none;align-items:center;justify-content:center;padding:16px}
+.profile-list-modal{position:fixed;inset:0;z-index:2147482500;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(0,8,14,.97);}
+.profile-list-modal.show{display:flex;}
+.profile-list-card{width:100%;max-width:520px;max-height:90dvh;display:flex;flex-direction:column;overflow:hidden;background:#062d3e;border:1px solid #ffd000;border-radius:18px;padding:14px;box-shadow:0 15px 50px rgba(0,0,0,.6);}
+.profile-list-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.profile-list-title{flex:1;color:#ffd000;font-size:18px;font-weight:bold;}
+.profile-list-close{width:38px;height:38px;flex:0 0 auto;border:0;border-radius:50%;background:#ffd000;color:#001b2b;font-size:24px;font-weight:bold;cursor:pointer;}
+.profile-list-content{min-height:70px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+.profile-list-note{padding:18px 10px;color:#c4d4dc;text-align:center;font-size:13px;line-height:1.5;}
+.profile-list-row{display:flex;align-items:center;gap:10px;padding:10px 3px;border-top:1px solid rgba(7,90,120,.55);cursor:pointer;}
+.profile-list-row:first-child{border-top:0;}
+.profile-list-avatar{width:44px;height:44px;flex:0 0 44px;border-radius:50%;object-fit:cover;border:2px solid #ffd000;background:#092331;}
+.profile-list-main{min-width:0;flex:1;}
+.profile-list-name{color:#ffd000;font-size:14px;font-weight:bold;overflow-wrap:anywhere;}
+.profile-list-detail{color:#9db0ba;font-size:11px;margin-top:3px;}
+.profile-list-follow{border:1px solid #ffd000;border-radius:10px;padding:7px 9px;background:transparent;color:#ffd000;font-size:11px;font-weight:bold;cursor:pointer;}
+.profile-list-follow.following{background:#ffd000;color:#001b2b;}
 .social-profile-modal.show{display:flex}.social-profile-card{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:#062d3e;border:1px solid #ffd000;border-radius:22px;padding:16px;box-shadow:0 15px 50px rgba(0,0,0,.55)}
 .social-profile-top{display:flex;align-items:center;gap:12px}.social-profile-avatar{width:78px;height:78px;border-radius:50%;object-fit:cover;border:3px solid #ffd000;background:#092331}.social-profile-info{flex:1;min-width:0}.social-profile-name{font-size:20px;font-weight:bold;color:#ffd000;word-break:break-word}.social-profile-number{font-size:12px;color:#9db0ba;margin-top:3px}.social-profile-close{border:0;background:#ffd000;color:#001b2b;width:42px;height:42px;border-radius:50%;font-size:25px;font-weight:bold;cursor:pointer}
-.social-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:14px 0}.social-stat{background:#073b50;border-radius:12px;text-align:center;padding:10px 5px}.social-stat strong{display:block;color:#ffd000;font-size:18px}.social-stat span{font-size:11px;color:#d7e2e7}.social-profile-actions{display:flex;gap:8px;margin-bottom:12px}.social-profile-actions button{flex:1;border:1px solid #ffd000;border-radius:12px;background:transparent;color:#ffd000;padding:10px;font-weight:bold;cursor:pointer}.social-profile-actions button.following{background:#ffd000;color:#001b2b}.profile-posts-title{font-weight:bold;color:#ffd000;margin:10px 0}.profile-post-list .post{margin-bottom:12px}
+.social-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:14px 0}.social-stat{background:#073b50;border-radius:12px;text-align:center;padding:10px 5px;cursor:pointer}.social-stat strong{display:block;color:#ffd000;font-size:18px}.social-stat span{font-size:11px;color:#d7e2e7}.social-profile-actions{display:flex;gap:8px;margin-bottom:12px}.social-profile-actions button{flex:1;border:1px solid #ffd000;border-radius:12px;background:transparent;color:#ffd000;padding:10px;font-weight:bold;cursor:pointer}.social-profile-actions button.following{background:#ffd000;color:#001b2b}.profile-posts-title{font-weight:bold;color:#ffd000;margin:10px 0}.profile-post-list .post{margin-bottom:12px}
 .social-profile-pictures{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:8px 0 14px}
 .social-profile-picture{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid #075a78;background:#001b2b;cursor:pointer}
 .social-profile-pictures-empty{grid-column:1/-1;padding:18px;text-align:center;color:#9db0ba;font-size:13px}
@@ -1750,6 +1769,14 @@ body.image-viewer-open{
     min-width:0;
     text-align:center;
 }
+
+.profile-stat.is-clickable{
+    cursor:pointer;
+    border-radius:9px;
+    padding:3px 0;
+}
+.profile-stat.is-clickable:active{background:rgba(255,208,0,.10);}
+.profile-stat.is-clickable:focus-visible{outline:2px solid #ffd000;outline-offset:2px;}
 
 .profile-stat strong{
     display:block;
@@ -2990,6 +3017,17 @@ Cancel
 </div>
 
 
+<!-- PROFILE ACTIVITY LISTS -->
+<div id="profileListModal" class="profile-list-modal" aria-hidden="true">
+  <section class="profile-list-card" role="dialog" aria-modal="true" aria-labelledby="profileListTitle">
+    <div class="profile-list-head">
+      <div id="profileListTitle" class="profile-list-title">Community activity</div>
+      <button id="profileListClose" class="profile-list-close" type="button" aria-label="Close">×</button>
+    </div>
+    <div id="profileListContent" class="profile-list-content"></div>
+  </section>
+</div>
+
 <!-- SOCIAL PROFILE MODAL -->
 <div id="socialProfileModal" class="social-profile-modal">
   <div class="social-profile-card">
@@ -3186,6 +3224,7 @@ import{
     set,
     get,
     update,
+    remove,
     onValue,
     query,
     orderByChild,
@@ -3319,6 +3358,11 @@ const celebrationsStat=
 
 const clicksStat=
     $("clicksStat");
+
+const profileListModal=$("profileListModal");
+const profileListTitle=$("profileListTitle");
+const profileListContent=$("profileListContent");
+const profileListClose=$("profileListClose");
 
 const profileMenuBtn=
     $("profileMenuBtn");
@@ -3727,7 +3771,7 @@ function openMonetization(){
         $("kulzzyCurrencyBalance").textContent="K"+formatKulzzyNumber(currency);
         setMonetizationProgress("currency",currency);
         refreshMonetizationStats();
-        $("monetizationStatus").textContent="Calculated from recognised successful payment records under celebrations/"+userId+". If your payment system stores records elsewhere or uses different field names/statuses, the balance may remain K0. Actual withdrawals are not connected.";
+        $("monetizationStatus").textContent="";
     },error=>{
         console.error("Kulzzy monetization payment listener:",error);
         $("monetizationStatus").textContent="Could not read celebration payment records. Check Firebase access and the payment-record structure.";
@@ -4513,16 +4557,10 @@ menuShareProfile.onclick=async()=>{
 
 
 const uniquePostClickCounts={};
+let ownPostIds=[];
 
 function countOwnPostClicks(){
-    let total=0;
-    if(latestPostsSnapshot && latestPostsSnapshot.exists()){
-        latestPostsSnapshot.forEach(child=>{
-            const post=child.val()||{};
-            if(post.uid===userId) total+=Number(uniquePostClickCounts[child.key]||0);
-        });
-    }
-    return total;
+    return ownPostIds.reduce((total,postId)=>total+Number(uniquePostClickCounts[postId]||0),0);
 }
 
 async function getUniquePostClickCount(postId){
@@ -4547,15 +4585,21 @@ async function refreshUniquePostClickCount(postId,postElement){
 }
 
 async function refreshOwnUniquePostClickStats(){
-    if(!userId || !latestPostsSnapshot || !latestPostsSnapshot.exists()) return;
-    const jobs=[];
-    latestPostsSnapshot.forEach(child=>{
-        const post=child.val()||{};
-        if(post.uid===userId) jobs.push(getUniquePostClickCount(child.key).catch(()=>0));
-    });
-    await Promise.all(jobs);
-    updateOwnProfileStats();
-    refreshMonetizationStats();
+    if(!userId) return;
+    try{
+        const snapshot=await get(ref(db,"communityPosts"));
+        ownPostIds=[];
+        if(snapshot.exists()) snapshot.forEach(child=>{
+            const post=child.val()||{};
+            if(post.uid===userId && (post.image||post.images)) ownPostIds.push(child.key);
+        });
+        const jobs=ownPostIds.map(postId=>getUniquePostClickCount(postId).catch(()=>0));
+        await Promise.all(jobs);
+        updateOwnProfileStats();
+        refreshMonetizationStats();
+    }catch(error){
+        console.error("Own picture click totals could not be refreshed:",error);
+    }
 }
 
 
@@ -4629,10 +4673,141 @@ function startOwnProfileStatsListeners(){
             },
             error=>console.error("Own celebration statistics read failed:",error)
         );
+
+    refreshOwnUniquePostClickStats();
 }
 
 startOwnProfileStatsListeners();
 
+/* =========================
+   FOLLOWERS / PICTURE CLICKERS / CELEBRATION DETAILS
+========================= */
+function showProfileList(title,html){
+    profileListTitle.textContent=title;
+    profileListContent.innerHTML=html;
+    profileListModal.classList.add("show");
+    profileListModal.setAttribute("aria-hidden","false");
+}
+function closeProfileList(){
+    profileListModal.classList.remove("show");
+    profileListModal.setAttribute("aria-hidden","true");
+}
+profileListClose.onclick=closeProfileList;
+profileListModal.addEventListener("click",event=>{if(event.target===profileListModal)closeProfileList();});
+
+async function loadCommunityMemberProfile(uid){
+    if(!uid) return {};
+    if(profilesCache[uid]) return profilesCache[uid];
+    try{
+        const snap=await get(ref(db,`profiles/${uid}`));
+        const profile=snap.exists()?(snap.val()||{}):{};
+        profilesCache[uid]=profile;
+        return profile;
+    }catch(error){
+        console.warn("Could not load member profile:",error);
+        return {};
+    }
+}
+
+async function openFollowersList(ownerUid=userId){
+    if(!ownerUid) return;
+    showProfileList("Followers",'<div class="profile-list-note">Loading followers...</div>');
+    try{
+        const [followersSnap,followingSnap]=await Promise.all([
+            get(ref(db,`followers/${ownerUid}`)),
+            ownerUid===userId?get(ref(db,`following/${userId}`)):Promise.resolve(null)
+        ]);
+        const entries=followersSnap.exists()?Object.entries(followersSnap.val()||{}).filter(([uid])=>uid!=="count"):[];
+        if(!entries.length){profileListContent.innerHTML='<div class="profile-list-note">No followers yet.</div>';return;}
+        const alreadyFollowing=followingSnap&&followingSnap.exists()?(followingSnap.val()||{}):{};
+        profileListContent.innerHTML="";
+        for(const [uid,record] of entries){
+            const profile=await loadCommunityMemberProfile(uid);
+            const name=profile.name||record?.name||"Listener";
+            const photo=profile.photo||DEFAULT_PROFILE;
+            const row=document.createElement("div");
+            row.className="profile-list-row";
+            const detail=record?.time?time(record.time):"Kulzzy Radio Community member";
+            row.innerHTML=`<img class="profile-list-avatar" src="${esc(photo)}" alt=""><div class="profile-list-main"><div class="profile-list-name">${esc(name)}</div><div class="profile-list-detail">${esc(detail)}</div></div>`;
+            if(ownerUid===userId && uid!==userId){
+                const isFollowing=!!alreadyFollowing[uid];
+                const button=document.createElement("button");
+                button.type="button";button.className="profile-list-follow"+(isFollowing?" following":"");
+                button.textContent=isFollowing?"Following":"Follow back";
+                button.onclick=async event=>{
+                    event.stopPropagation();
+                    if(button.disabled||button.classList.contains("following"))return;
+                    button.disabled=true;
+                    try{await setFollowingRecord(uid,true);button.classList.add("following");button.textContent="Following";}
+                    catch(error){console.error("Follow back failed:",error);showToast("Could not follow this member. Please try again.");}
+                    finally{button.disabled=false;}
+                };
+                row.appendChild(button);
+            }
+            row.onclick=()=>{closeProfileList();openSocialProfile(uid);};
+            profileListContent.appendChild(row);
+        }
+    }catch(error){
+        console.error("Follower list could not be loaded:",error);
+        profileListContent.innerHTML='<div class="profile-list-note">Unable to load followers. Please try again.</div>';
+    }
+}
+
+async function openPictureClickersList(ownerUid=userId){
+    if(!ownerUid)return;
+    showProfileList("People who clicked your pictures",'<div class="profile-list-note">Loading picture clicks...</div>');
+    try{
+        const postsSnap=await get(ref(db,"communityPosts"));
+        const ownedPosts=[];
+        if(postsSnap.exists())postsSnap.forEach(child=>{const post=child.val()||{};if(post.uid===ownerUid&&(post.image||post.images))ownedPosts.push(child.key);});
+        if(!ownedPosts.length){profileListContent.innerHTML='<div class="profile-list-note">No uploaded pictures to show yet.</div>';return;}
+        const clickers=new Map();
+        for(const postId of ownedPosts){
+            const clicksSnap=await get(ref(db,`postImageClicks/${postId}`));
+            if(!clicksSnap.exists())continue;
+            clicksSnap.forEach(child=>{
+                const uid=child.key;
+                if(!uid)return;
+                const current=clickers.get(uid)||0;
+                clickers.set(uid,current+1);
+            });
+        }
+        if(!clickers.size){profileListContent.innerHTML='<div class="profile-list-note">No picture clicks have been recorded yet.</div>';return;}
+        const ordered=[...clickers.entries()].sort((a,b)=>b[1]-a[1]);
+        profileListContent.innerHTML="";
+        for(const [uid,pictureCount] of ordered){
+            const profile=await loadCommunityMemberProfile(uid);
+            const row=document.createElement("div");
+            row.className="profile-list-row";
+            row.innerHTML=`<img class="profile-list-avatar" src="${esc(profile.photo||DEFAULT_PROFILE)}" alt=""><div class="profile-list-main"><div class="profile-list-name">${esc(profile.name||"Listener")}</div><div class="profile-list-detail">Clicked ${pictureCount} of your picture${pictureCount===1?"":"s"}</div></div>`;
+            row.onclick=()=>{closeProfileList();openSocialProfile(uid);};
+            profileListContent.appendChild(row);
+        }
+    }catch(error){
+        console.error("Picture clicker list could not be loaded:",error);
+        profileListContent.innerHTML='<div class="profile-list-note">Unable to load picture clickers. Please try again.</div>';
+    }
+}
+
+function openCelebrationPeopleList(ownerUid=userId){
+    if(!ownerUid)return;
+    showProfileList("People who celebrated",'<div class="profile-list-note">Your celebration total is available, but individual celebrant names are not stored by the current payment setup. When the payment link is created, the verified payment record will be connected here so names can appear. Your payment link remains empty for now.</div>');
+}
+
+function makeProfileStatClickable(element,handler){
+    if(!element)return;
+    const box=element.closest(".profile-stat")||element.parentElement;
+    if(!box)return;
+    box.classList.add("is-clickable");
+    box.setAttribute("role","button");
+    box.setAttribute("tabindex","0");
+    box.setAttribute("aria-label",element.textContent+" "+(box.querySelector("span")?.textContent||""));
+    box.addEventListener("click",handler);
+    box.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();handler();}});
+}
+makeProfileStatClickable(followersStat,()=>openFollowersList(userId));
+makeProfileStatClickable(celebrationsStat,()=>openCelebrationPeopleList(userId));
+makeProfileStatClickable(clicksStat,()=>openPictureClickersList(userId));
 
 function handleProfileHash(){
 
@@ -5810,82 +5985,61 @@ async function openUploadedPictures(){
 }
 
 async function deleteUploadedPicture(postId,imageIndex){
+    if(!userId) throw new Error("Please sign in before deleting pictures.");
+    const postRef=ref(db,`communityPosts/${postId}`);
     try{
-        const snap=await get(ref(db,`communityPosts/${postId}`));
-        if(!snap.exists()) return;
-
+        const snap=await get(postRef);
+        if(!snap.exists()) throw new Error("This picture is no longer available.");
         const post=snap.val()||{};
-        if(post.uid!==userId) return;
-
+        if(post.uid!==userId) throw new Error("You can only delete pictures you uploaded.");
         const images=getPostImages(post);
         const index=Number(imageIndex);
-        if(index<0 || index>=images.length) return;
-
+        if(!Number.isInteger(index)||index<0||index>=images.length) throw new Error("This picture could not be found. Refresh and try again.");
         images.splice(index,1);
-
         if(!images.length){
-            await update(ref(db),{[`communityPosts/${postId}`]:null});
+            await remove(postRef);
         }else{
-            await update(ref(db),{
-                [`communityPosts/${postId}/images`]:images,
-                [`communityPosts/${postId}/image`]:images[0]
-            });
+            await update(postRef,{images:images,image:images[0]});
         }
     }catch(error){
         console.error("Delete picture error:",error);
+        if(error?.code==="PERMISSION_DENIED" || error?.code==="permission-denied") throw new Error("Firebase does not currently allow this account to delete the picture. The database rules must allow the owner to delete their own community post.");
         throw error;
     }
 }
 
 async function deleteSelectedUploadedPictures(){
     const checked=Array.from(uploadedPicturesGrid.querySelectorAll(".uploaded-picture-check:checked"));
-    if(!checked.length){
-        showToast("Select pictures to delete.");
-        return;
-    }
-
+    if(!checked.length){showToast("Select pictures to delete.");return;}
     if(!confirm(`Delete ${checked.length} selected picture${checked.length>1?"s":""}?`)) return;
-
     deleteSelectedUploaded.disabled=true;
     try{
         const grouped={};
         checked.forEach(box=>{
             const postId=box.getAttribute("data-post-id");
             const imageIndex=Number(box.getAttribute("data-image-index"));
-            if(!grouped[postId]) grouped[postId]=[];
+            if(!grouped[postId])grouped[postId]=[];
             grouped[postId].push(imageIndex);
         });
-
         for(const [postId,indexes] of Object.entries(grouped)){
-            const snap=await get(ref(db,`communityPosts/${postId}`));
-            if(!snap.exists()) continue;
+            const postRef=ref(db,`communityPosts/${postId}`);
+            const snap=await get(postRef);
+            if(!snap.exists())continue;
             const post=snap.val()||{};
-            if(post.uid!==userId) continue;
-
-            let images=getPostImages(post);
-            indexes.sort((a,b)=>b-a).forEach(index=>{
-                if(index>=0 && index<images.length) images.splice(index,1);
-            });
-
-            if(!images.length){
-                await update(ref(db),{[`communityPosts/${postId}`]:null});
-            }else{
-                await update(ref(db),{
-                    [`communityPosts/${postId}/images`]:images,
-                    [`communityPosts/${postId}/image`]:images[0]
-                });
-            }
+            if(post.uid!==userId)continue;
+            const images=getPostImages(post);
+            [...new Set(indexes)].sort((a,b)=>b-a).forEach(index=>{if(Number.isInteger(index)&&index>=0&&index<images.length)images.splice(index,1);});
+            if(!images.length)await remove(postRef);
+            else await update(postRef,{images:images,image:images[0]});
         }
-
         showToast("Selected pictures deleted.");
         await openUploadedPictures();
     }catch(error){
         console.error("Delete selected pictures error:",error);
-        showToast("Some pictures could not be deleted.");
-    }finally{
-        deleteSelectedUploaded.disabled=false;
-    }
+        showToast(error?.message||"Some pictures could not be deleted. Check your Firebase database permissions.");
+    }finally{deleteSelectedUploaded.disabled=false;}
 }
+
 
 menuUploadedPictures.onclick=openUploadedPictures;
 
@@ -5916,13 +6070,15 @@ uploadedPicturesGrid.addEventListener("click",async event=>{
 
     if(!confirm("Delete this picture?")) return;
 
+    button.disabled=true;
     try{
         await deleteUploadedPicture(parts[0],Number(parts[1]));
         showToast("Picture deleted.");
         await openUploadedPictures();
     }catch(error){
-        showToast("Picture could not be deleted.");
-    }
+        console.error("Uploaded picture delete action failed:",error);
+        showToast(error?.message||"Picture could not be deleted. Check your Firebase database permissions.");
+    }finally{button.disabled=false;}
 });
 
 
@@ -6223,8 +6379,24 @@ async function clickPost(id,url){
             const visitorClickRef=ref(db,`postImageClicks/${id}/${userId}`);
             const existing=await get(visitorClickRef);
             if(!existing.exists()){
-                try{ await set(visitorClickRef,true); }
-                catch(writeError){ console.warn("Unique picture click was not added:",writeError); }
+                try{
+                    await set(visitorClickRef,{uid:userId,time:Date.now()});
+                    const postSnap=await get(ref(db,`communityPosts/${id}`));
+                    const post=postSnap.exists()?(postSnap.val()||{}):{};
+                    if(post.uid && post.uid!==userId){
+                        try{
+                            await set(push(ref(db,`notifications/${post.uid}`)),{
+                                type:"picture_click",
+                                uid:post.uid,
+                                fromUid:userId,
+                                postId:id,
+                                name:savedProfile?.name||"A community member",
+                                text:(savedProfile?.name||"A community member")+" clicked your picture.",
+                                time:Date.now()
+                            });
+                        }catch(notificationError){console.warn("Picture click notification could not be saved:",notificationError);}
+                    }
+                }catch(writeError){ console.warn("Unique picture click was not added:",writeError); }
             }
         }
         const total=await getUniquePostClickCount(id);
@@ -6672,6 +6844,9 @@ async function openSocialProfile(uid){
     });
 }
 socialProfileClose.onclick=()=>socialProfileModal.classList.remove("show"); socialProfileModal.onclick=e=>{if(e.target===socialProfileModal)socialProfileModal.classList.remove("show");};
+socialFollowerStat.closest(".social-stat")?.addEventListener("click",()=>openFollowersList(openedSocialUid));
+socialCelebrationsStat.closest(".social-stat")?.addEventListener("click",()=>openCelebrationPeopleList(openedSocialUid));
+socialClicksStat.closest(".social-stat")?.addEventListener("click",()=>openPictureClickersList(openedSocialUid));
 
 /* =========================
    REALTIME POSTS — LIGHT INITIAL LOAD
@@ -6758,6 +6933,59 @@ function getCombinedNotifications(){
     const b=globalNotificationItems.map(item=>({...item,notificationKey:"global_"+item.id,notificationSource:"global"}));
     return a.concat(b).sort((x,y)=>notificationTimestamp(y)-notificationTimestamp(x));
 }
+function notificationHasAction(item){
+    if(item?.url||item?.link||item?.actionUrl)return true;
+    const type=String(item?.type||"").toLowerCase();
+    if(type==="follow")return !!(item.fromUid||item.actorUid||item.senderUid);
+    if(["post_click","click","image_click","picture_click"].includes(type))return !!(item.postId||item.fromUid||item.actorUid);
+    if(["post","comment","like","reply"].includes(type))return !!(item.postId||item.uid||item.fromUid);
+    if(["celebration","celebrated","celebrate"].includes(type))return !!(item.uid||item.fromUid||item.actorUid);
+    return !!(item.profileUid||item.targetUid);
+}
+
+async function navigateToCommunityPost(postId){
+    if(!postId)return;
+    try{
+        if(!allPostsLoaded){
+            const snapshot=await get(ref(db,"communityPosts"));
+            latestPostsSnapshot=snapshot;
+            allPostsLoaded=true;
+            showAllPosts=true;
+            renderPosts(snapshot);
+        }
+        const target=document.getElementById("post-"+postId);
+        if(target){
+            target.scrollIntoView({behavior:"smooth",block:"center"});
+            target.style.outline="2px solid #ffd000";
+            setTimeout(()=>{target.style.outline="";},2200);
+        }else showToast("This post is no longer available.");
+    }catch(error){
+        console.error("Could not open notification post:",error);
+        showToast("Could not open this post. Please try again.");
+    }
+}
+
+async function handleNotificationClick(item){
+    notificationPanel.classList.remove("show");
+    const directUrl=item?.url||item?.link||item?.actionUrl||"";
+    if(directUrl){
+        try{const url=new URL(directUrl,location.href);if(url.protocol==="http:"||url.protocol==="https:")location.href=url.toString();}
+        catch(error){console.warn("Invalid notification link:",error);}
+        return;
+    }
+    const type=String(item?.type||"").toLowerCase();
+    const actorUid=item.fromUid||item.actorUid||item.senderUid||item.profileUid||item.targetUid||"";
+    if(type==="follow"){if(actorUid)openSocialProfile(actorUid);return;}
+    if(["post_click","click","image_click","picture_click"].includes(type)){
+        if(item.postId){await navigateToCommunityPost(item.postId);return;}
+        if(actorUid)openSocialProfile(actorUid);
+        return;
+    }
+    if(item.postId && ["post","comment","like","reply"].includes(type)){await navigateToCommunityPost(item.postId);return;}
+    if(actorUid){openSocialProfile(actorUid);return;}
+    if(item.uid && ["post","comment","like","reply","celebration","celebrated","celebrate"].includes(type))openSocialProfile(item.uid);
+}
+
 function renderCombinedNotifications(){
     if(!notificationList)return;
     const items=getCombinedNotifications();
@@ -6773,6 +7001,13 @@ function renderCombinedNotifications(){
         const read=!!notificationReadStatus[item.notificationKey];
         const div=document.createElement("div");
         div.className="notification-item"+(read?" notification-read":" notification-unread");
+        if(notificationHasAction(item)){
+            div.classList.add("actionable");
+            div.setAttribute("role","button");
+            div.setAttribute("tabindex","0");
+            div.setAttribute("aria-label","Open notification: "+notificationText(item));
+            div.dataset.notificationKey=item.notificationKey;
+        }
         if(item.notificationSource==="global"){
             const label=document.createElement("div");
             label.textContent="KULZZY RADIO";
@@ -6791,6 +7026,20 @@ function renderCombinedNotifications(){
     const unread=items.reduce((n,item)=>n+(!notificationReadStatus[item.notificationKey]?1:0),0);
     setNotificationBadge(notificationPanel.classList.contains("show")?0:unread);
 }
+notificationList.addEventListener("click",event=>{
+    const itemElement=event.target.closest(".notification-item.actionable");
+    if(!itemElement)return;
+    const item=latestMemberNotifications.find(entry=>entry.notificationKey===itemElement.dataset.notificationKey);
+    if(item)handleNotificationClick(item);
+});
+notificationList.addEventListener("keydown",event=>{
+    if(event.key!=="Enter"&&event.key!==" ")return;
+    const itemElement=event.target.closest(".notification-item.actionable");
+    if(!itemElement)return;
+    event.preventDefault();
+    const item=latestMemberNotifications.find(entry=>entry.notificationKey===itemElement.dataset.notificationKey);
+    if(item)handleNotificationClick(item);
+});
 async function markVisibleNotificationsAsRead(){
     if(!userId || !auth.currentUser)return;
     const changes={};
