@@ -1,41 +1,24 @@
 /* =========================================================
    KULZZY UNIVERSAL LEADERSHIP CHALLENGE
    COMPLETE LEADERSHIP SYSTEM
-   File: leadership.js
+   Updated: Live contestant vote counts + automatic Nigeria-day rollover
    ========================================================= */
 
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
 import {
-  getDatabase,
-  ref,
-  get,
-  set,
-  onValue
+  getDatabase, ref, get, set, onValue
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
 import {
-  getAuth,
-  onAuthStateChanged
+  getAuth, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-
-/* =========================================================
-   1. FIREBASE CONNECTION
-   Reuses the existing Kulzzy Community Firebase app
-   ========================================================= */
-
+/* 1. FIREBASE CONNECTION */
 const app = getApp();
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-
-/* =========================================================
-   2. ADMIN CONFIGURATION
-   ========================================================= */
-
+/* 2. ADMIN CONFIGURATION */
 const ADMIN_UID = "J5bniEYbkIaDLmn4RPBbAC7crf23";
-
 const PATHS = {
   profiles: "profiles",
   entries: "leadershipDailyEntries",
@@ -44,37 +27,25 @@ const PATHS = {
   results: "leadershipDailyResults"
 };
 
-
-/* =========================================================
-   3. APPLICATION STATE
-   ========================================================= */
-
+/* 3. APPLICATION STATE */
 let currentUser = null;
 let currentDate = getNigeriaDate();
-
 let contestants = {};
+let voteCounts = {};
 let publishedResults = null;
 let myVote = null;
 let votingClosed = false;
+let dailyUnsubscribers = [];
+let lastAuthUid = null;
 
-let listenersStarted = false;
-let voteListenerStarted = false;
-
-
-/* =========================================================
-   4. HTML ELEMENT HELPER
-   ========================================================= */
-
+/* 4. HTML ELEMENT HELPER */
 function element(id) {
   return document.getElementById(id);
 }
 
 function showMessage(id, message) {
   const el = element(id);
-
-  if (el) {
-    el.textContent = message;
-  }
+  if (el) el.textContent = message;
 }
 
 function escapeHTML(value) {
@@ -87,11 +58,7 @@ function escapeHTML(value) {
   })[char]);
 }
 
-
-/* =========================================================
-   5. NIGERIA DATE
-   ========================================================= */
-
+/* 5. NIGERIA DATE */
 function getNigeriaDate() {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Africa/Lagos",
@@ -101,7 +68,6 @@ function getNigeriaDate() {
   }).formatToParts(new Date());
 
   const values = {};
-
   parts.forEach(part => {
     values[part.type] = part.value;
   });
@@ -109,34 +75,21 @@ function getNigeriaDate() {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-
-/* =========================================================
-   6. DATABASE PATHS
-   ========================================================= */
-
+/* 6. DATABASE PATHS */
 function dailyPath(path) {
   return `${path}/${currentDate}`;
 }
 
-
-/* =========================================================
-   7. STATUS DISPLAY
-   ========================================================= */
-
+/* 7. STATUS DISPLAY */
 function updateDateStatus() {
   const date = currentDate.split("-").reverse().join("/");
-
   showMessage(
     "klcDateStatus",
     `Nigeria date: ${date} | ${votingClosed ? "Voting closed" : "Voting open"}`
   );
 }
 
-
-/* =========================================================
-   8. LOAD THE EXISTING COMMUNITY PROFILE
-   ========================================================= */
-
+/* 8. LOAD THE EXISTING COMMUNITY PROFILE */
 async function getMyProfile() {
   if (!currentUser) {
     throw new Error("Please sign in to your community account.");
@@ -170,17 +123,11 @@ async function getMyProfile() {
     username,
     photo,
     searchName: profile.name.trim().toLowerCase(),
-    searchUsername: (username || profile.name)
-      .trim()
-      .toLowerCase()
+    searchUsername: (username || profile.name).trim().toLowerCase()
   };
 }
 
-
-/* =========================================================
-   9. REGISTER AS A CONTESTANT
-   ========================================================= */
-
+/* 9. REGISTER AS A CONTESTANT */
 async function joinChallenge() {
   if (!currentUser) {
     showMessage(
@@ -240,7 +187,6 @@ async function joinChallenge() {
 
   } catch (error) {
     console.error("Leadership registration error:", error);
-
     showMessage(
       "klcMyStatus",
       `Registration failed: ${error.message}`
@@ -249,101 +195,152 @@ async function joinChallenge() {
   } finally {
     if (button) {
       button.disabled = false;
-      button.textContent = "CONTEST FOR LEADERSHIP";
+      renderMyStatus();
     }
   }
 }
 
-
-/* =========================================================
-   10. LOAD CONTESTANTS
-   ========================================================= */
-
-function startEntryListener() {
-  onValue(
-    ref(db, dailyPath(PATHS.entries)),
-    snapshot => {
-      contestants = snapshot.val() || {};
-
-      renderContestants();
-      renderMyStatus();
-    },
-    error => {
-      console.error("Contestant loading error:", error);
-
-      showMessage(
-        "klcContestants",
-        `Unable to load contestants: ${error.message}`
-      );
+/* 10. DAILY LISTENER CLEANUP / STARTUP */
+function stopDailyListeners() {
+  dailyUnsubscribers.forEach(unsubscribe => {
+    try {
+      unsubscribe();
+    } catch (error) {
+      console.warn("Leadership listener cleanup:", error);
     }
-  );
+  });
+
+  dailyUnsubscribers = [];
 }
 
-
-/* =========================================================
-   11. CHECK WHETHER VOTING IS CLOSED
-   ========================================================= */
-
-function startSettingsListener() {
-  onValue(
-    ref(db, `${dailyPath(PATHS.settings)}/closed`),
-    snapshot => {
-      votingClosed = snapshot.val() === true;
-
-      updateDateStatus();
-      renderContestants();
-      renderMyStatus();
-    },
-    error => {
-      console.error("Voting settings error:", error);
-
-      showMessage(
-        "klcDateStatus",
-        `Unable to load voting status: ${error.message}`
-      );
-    }
-  );
-}
-
-
-/* =========================================================
-   12. CHECK MY VOTE
-   ========================================================= */
-
-function startMyVoteListener() {
-  if (!currentUser || voteListenerStarted) {
-    return;
+function addDailyListener(unsubscribe) {
+  if (typeof unsubscribe === "function") {
+    dailyUnsubscribers.push(unsubscribe);
   }
-
-  voteListenerStarted = true;
-
-  onValue(
-    ref(
-      db,
-      `${PATHS.votes}/${currentDate}/${currentUser.uid}`
-    ),
-    snapshot => {
-      myVote = snapshot.val() || null;
-
-      renderContestants();
-      renderMyStatus();
-    },
-    error => {
-      console.error("Vote status error:", error);
-
-      showMessage(
-        "klcMyStatus",
-        `Unable to check your vote: ${error.message}`
-      );
-    }
-  );
 }
 
+function startDailyListeners() {
+  stopDailyListeners();
 
-/* =========================================================
-   13. RENDER MY STATUS
-   ========================================================= */
+  contestants = {};
+  voteCounts = {};
+  publishedResults = null;
+  myVote = null;
+  votingClosed = false;
 
+  renderContestants();
+  renderMyStatus();
+  updateDateStatus();
+
+  /* 10a. Contestants for the current Nigeria date */
+  addDailyListener(
+    onValue(
+      ref(db, dailyPath(PATHS.entries)),
+      snapshot => {
+        contestants = snapshot.val() || {};
+        renderContestants();
+        renderMyStatus();
+      },
+      error => {
+        console.error("Contestant loading error:", error);
+        showMessage(
+          "klcContestants",
+          `Unable to load contestants: ${error.message}`
+        );
+      }
+    )
+  );
+
+  /* 10b. Voting status for the current Nigeria date */
+  addDailyListener(
+    onValue(
+      ref(db, `${dailyPath(PATHS.settings)}/closed`),
+      snapshot => {
+        votingClosed = snapshot.val() === true;
+        updateDateStatus();
+        renderContestants();
+        renderMyStatus();
+      },
+      error => {
+        console.error("Voting settings error:", error);
+        showMessage(
+          "klcDateStatus",
+          `Unable to load voting status: ${error.message}`
+        );
+      }
+    )
+  );
+
+  /* 10c. LIVE VOTE TOTALS */
+  addDailyListener(
+    onValue(
+      ref(db, dailyPath(PATHS.votes)),
+      snapshot => {
+        const records = snapshot.val() || {};
+        const totals = {};
+
+        Object.values(records).forEach(vote => {
+          if (vote && vote.candidateUid) {
+            totals[vote.candidateUid] =
+              (totals[vote.candidateUid] || 0) + 1;
+          }
+        });
+
+        voteCounts = totals;
+        renderContestants();
+      },
+      error => {
+        console.error("Live vote-count loading error:", error);
+        showMessage(
+          "klcContestants",
+          `Unable to load live vote counts: ${error.message}`
+        );
+      }
+    )
+  );
+
+  /* 10d. Published results for the current Nigeria date */
+  addDailyListener(
+    onValue(
+      ref(db, dailyPath(PATHS.results)),
+      snapshot => {
+        publishedResults = snapshot.val() || null;
+        renderResults();
+        renderTopThree();
+      },
+      error => {
+        console.error("Results loading error:", error);
+        showMessage(
+          "klcResults",
+          `Unable to load published results: ${error.message}`
+        );
+      }
+    )
+  );
+
+  /* 10e. This signed-in member's vote for the current Nigeria date */
+  if (currentUser) {
+    addDailyListener(
+      onValue(
+        ref(db, `${PATHS.votes}/${currentDate}/${currentUser.uid}`),
+        snapshot => {
+          myVote = snapshot.val() || null;
+          renderContestants();
+          renderMyStatus();
+        },
+        error => {
+          console.error("Vote status error:", error);
+          showMessage(
+            "klcMyStatus",
+            `Unable to check your vote: ${error.message}`
+          );
+        }
+      )
+    );
+  }
+}
+
+/* 11. RENDER MY STATUS */
 function renderMyStatus() {
   if (!currentUser) {
     showMessage(
@@ -375,7 +372,8 @@ function renderMyStatus() {
   const button = element("klcJoinBtn");
 
   if (button) {
-    button.disabled = Boolean(myEntry) || votingClosed;
+    button.disabled =
+      Boolean(myEntry) || votingClosed || !currentUser;
 
     button.textContent = myEntry
       ? "YOU ARE REGISTERED"
@@ -385,34 +383,27 @@ function renderMyStatus() {
   }
 }
 
-
-/* =========================================================
-   14. CONTESTANT SEARCH
-   ========================================================= */
-
+/* 12. CONTESTANT SEARCH */
 function getFilteredContestants() {
-  const search = (element("klcSearch")?.value || "")
-    .trim()
-    .toLowerCase();
+  const search = (
+    element("klcSearch")?.value || ""
+  ).trim().toLowerCase();
 
   return Object.values(contestants).filter(person => {
     const name = String(person.name || "").toLowerCase();
     const username = String(person.username || "").toLowerCase();
 
-    return !search ||
+    return (
+      !search ||
       name.startsWith(search) ||
-      username.startsWith(search);
+      username.startsWith(search)
+    );
   });
 }
 
-
-/* =========================================================
-   15. DISPLAY CONTESTANTS
-   ========================================================= */
-
+/* 13. DISPLAY CONTESTANTS WITH LIVE VOTE COUNTS */
 function renderContestants() {
   const container = element("klcContestants");
-
   if (!container) return;
 
   const people = getFilteredContestants();
@@ -435,7 +426,8 @@ function renderContestants() {
     const username = escapeHTML(person.username || "");
     const photo = escapeHTML(person.photo || "");
 
-    const isMe = currentUser && person.uid === currentUser.uid;
+    const isMe = currentUser &&
+      person.uid === currentUser.uid;
 
     const buttonDisabled =
       !currentUser ||
@@ -449,61 +441,29 @@ function renderContestants() {
     else if (myVote) buttonText = "VOTE USED";
     else if (votingClosed) buttonText = "CLOSED";
 
+    const totalVotes = Number(voteCounts[person.uid] || 0);
+
     const avatar = photo
       ? `<img src="${photo}" alt="${name}" style="width:65px;height:65px;border-radius:50%;object-fit:cover;">`
       : `<div style="width:65px;height:65px;border-radius:50%;background:#172a4a;display:flex;align-items:center;justify-content:center;font-size:25px;">👤</div>`;
 
     return `
-      <div style="
-        display:flex;
-        align-items:center;
-        gap:12px;
-        background:#0b1b38;
-        border:1px solid #314365;
-        border-radius:12px;
-        padding:12px;
-        margin:10px 0;
-        color:white;
-      ">
+      <div style="display:flex;align-items:center;gap:12px;background:#0b1b38;border:1px solid #314365;border-radius:12px;padding:12px;margin:9px 0;color:white;">
         ${avatar}
-
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:bold;">
-            ${name}
-          </div>
-
-          <div style="font-size:12px;color:#c4cce0;">
-            ${username ? "@" + username : "Community contestant"}
-          </div>
+          <div style="font-weight:bold;">${name}</div>
+          <div style="font-size:12px;color:#c4cce0;">${username}</div>
+          <div style="font-size:13px;color:#ffd700;margin-top:5px;">🗳️ ${totalVotes} votes</div>
         </div>
-
-        <button
-          type="button"
-          data-vote-uid="${uid}"
-          ${buttonDisabled ? "disabled" : ""}
-          style="
-            background:${buttonDisabled ? "#555" : "#ffd700"};
-            color:${buttonDisabled ? "white" : "#06122a"};
-            border:0;
-            border-radius:8px;
-            padding:10px 13px;
-            font-weight:bold;
-          "
-        >
+        <button type="button" data-vote-uid="${uid}" ${buttonDisabled ? "disabled" : ""}
+          style="background:${buttonDisabled ? "#555" : "#ffd700"};color:${buttonDisabled ? "white" : "#06122a"};border:0;border-radius:8px;padding:10px 13px;font-weight:bold;">
           ${buttonText}
         </button>
-      </div>
-    `;
+      </div>`;
   }).join("");
 }
 
-
-/* =========================================================
-   16. CAST A VOTE
-   One vote per registered account per day
-   No self-voting
-   ========================================================= */
-
+/* 14. CAST A VOTE - ONE VOTE PER ACCOUNT PER NIGERIA DAY */
 async function castVote(candidateUid) {
   if (!currentUser) {
     alert("Please sign in before voting.");
@@ -552,70 +512,23 @@ async function castVote(candidateUid) {
 
   } catch (error) {
     console.error("Voting error:", error);
-
     alert(`Your vote could not be submitted: ${error.message}`);
   }
 }
 
-
-/* =========================================================
-   17. LOAD PUBLISHED RESULTS
-   ========================================================= */
-
-function startResultsListener() {
-  onValue(
-    ref(db, dailyPath(PATHS.results)),
-    snapshot => {
-      publishedResults = snapshot.val() || null;
-
-      renderResults();
-      renderTopThree();
-    },
-    error => {
-      console.error("Results loading error:", error);
-
-      showMessage(
-        "klcResults",
-        `Unable to load published results: ${error.message}`
-      );
-    }
-  );
-}
-
-
-/* =========================================================
-   18. RANKING TITLES
-   3 TOP LEADERS + 1,000 LGC POSITIONS
-   ========================================================= */
-
+/* 15. RANKING TITLES */
 function getLeadershipTitle(rank) {
-  if (rank === 1) {
-    return "🥇 Universal President of the Day";
-  }
-
-  if (rank === 2) {
-    return "🥈 Universal Vice President of the Day";
-  }
-
-  if (rank === 3) {
-    return "🥉 Universal Senate President of the Day";
-  }
-
-  if (rank >= 4 && rank <= 1003) {
-    return `LGC No. ${rank - 3}`;
-  }
+  if (rank === 1) return "🥇 Universal President of the Day";
+  if (rank === 2) return "🥈 Universal Vice President of the Day";
+  if (rank === 3) return "🥉 Universal Senate President of the Day";
+  if (rank >= 4 && rank <= 1003) return `LGC No. ${rank - 3}`;
 
   return "Community Member";
 }
 
-
-/* =========================================================
-   19. DISPLAY TOP THREE
-   ========================================================= */
-
+/* 16. DISPLAY TOP THREE */
 function renderTopThree() {
   const container = element("klcTopThree");
-
   if (!container) return;
 
   if (!publishedResults || !publishedResults.rankings) {
@@ -630,56 +543,27 @@ function renderTopThree() {
     .sort((a, b) => a.rank - b.rank);
 
   if (!top.length) {
-    container.textContent = "No official leaders have been published.";
+    container.textContent =
+      "No official leaders have been published.";
+
     return;
   }
 
   container.innerHTML = `
-    <div style="
-      display:flex;
-      gap:12px;
-      overflow-x:auto;
-      padding:8px 0;
-    ">
+    <div style="display:flex;gap:12px;overflow-x:auto;padding:8px 0;">
       ${top.map(person => `
-        <div style="
-          min-width:220px;
-          background:#0b1b38;
-          border:1px solid #ffd700;
-          border-radius:14px;
-          padding:15px;
-          color:white;
-          text-align:center;
-        ">
-          <div style="font-size:28px;">
-            ${person.rank === 1 ? "🥇" : person.rank === 2 ? "🥈" : "🥉"}
-          </div>
-
-          <div style="font-weight:bold;">
-            ${escapeHTML(person.name)}
-          </div>
-
-          <div style="color:#ffd700;font-size:13px;margin-top:6px;">
-            ${escapeHTML(getLeadershipTitle(person.rank))}
-          </div>
-
-          <div style="margin-top:8px;font-size:12px;">
-            ${Number(person.votes || 0)} votes
-          </div>
-        </div>
-      `).join("")}
-    </div>
-  `;
+        <div style="min-width:220px;background:#0b1b38;border:1px solid #ffd700;border-radius:14px;padding:15px;color:white;text-align:center;">
+          <div style="font-size:28px;">${person.rank === 1 ? "🥇" : person.rank === 2 ? "🥈" : "🥉"}</div>
+          <div style="font-weight:bold;">${escapeHTML(person.name)}</div>
+          <div style="color:#ffd700;font-size:13px;margin-top:6px;">${escapeHTML(getLeadershipTitle(person.rank))}</div>
+          <div style="margin-top:8px;font-size:12px;">${Number(person.votes || 0)} votes</div>
+        </div>`).join("")}
+    </div>`;
 }
 
-
-/* =========================================================
-   20. DISPLAY OFFICIAL RESULTS
-   ========================================================= */
-
+/* 17. DISPLAY OFFICIAL RESULTS */
 function renderResults() {
   const container = element("klcResults");
-
   if (!container) return;
 
   if (!publishedResults || !publishedResults.rankings) {
@@ -693,39 +577,16 @@ function renderResults() {
     .sort((a, b) => a.rank - b.rank);
 
   container.innerHTML = `
-    <div style="color:#ffd700;font-weight:bold;margin-bottom:12px;">
-      OFFICIAL LEADERSHIP RESULTS
-    </div>
-
+    <div style="color:#ffd700;font-weight:bold;margin-bottom:12px;">OFFICIAL LEADERSHIP RESULTS</div>
     ${rankings.map(person => `
-      <div style="
-        background:#0b1b38;
-        border:1px solid #314365;
-        border-radius:9px;
-        padding:11px;
-        margin:7px 0;
-        color:white;
-      ">
-        <strong>#${person.rank}</strong>
-        &nbsp; ${escapeHTML(person.name)}
-
-        <div style="font-size:12px;color:#ffd700;margin-top:4px;">
-          ${escapeHTML(getLeadershipTitle(person.rank))}
-        </div>
-
-        <div style="font-size:12px;color:#c4cce0;">
-          ${Number(person.votes || 0)} votes
-        </div>
-      </div>
-    `).join("")}
-  `;
+      <div style="background:#0b1b38;border:1px solid #314365;border-radius:9px;padding:11px;margin:7px 0;color:white;">
+        <strong>#${person.rank}</strong> &nbsp; ${escapeHTML(person.name)}
+        <div style="font-size:12px;color:#ffd700;margin-top:4px;">${escapeHTML(getLeadershipTitle(person.rank))}</div>
+        <div style="font-size:12px;color:#c4cce0;">${Number(person.votes || 0)} votes</div>
+      </div>`).join("")}`;
 }
 
-
-/* =========================================================
-   21. ADMIN ACCESS
-   ========================================================= */
-
+/* 18. ADMIN ACCESS */
 function configureAdmin() {
   const panel = element("klcAdminPanel");
 
@@ -737,11 +598,7 @@ function configureAdmin() {
   }
 }
 
-
-/* =========================================================
-   22. ADMIN: CALCULATE VOTES AND RANKINGS
-   ========================================================= */
-
+/* 19. ADMIN: CALCULATE VOTES AND RANKINGS */
 async function calculateRankings() {
   if (!currentUser || currentUser.uid !== ADMIN_UID) {
     throw new Error("Administrator access required.");
@@ -798,11 +655,7 @@ async function calculateRankings() {
   };
 }
 
-
-/* =========================================================
-   23. ADMIN: PREVIEW RANKINGS
-   ========================================================= */
-
+/* 20. ADMIN: PREVIEW RANKINGS */
 async function previewAdminRankings() {
   const preview = element("klcAdminPreview");
 
@@ -816,13 +669,9 @@ async function previewAdminRankings() {
     if (preview) {
       preview.innerHTML = result.rankings.map(person => `
         <div style="padding:7px;border-bottom:1px solid #314365;">
-          #${person.rank} — ${escapeHTML(person.name)}
-          — ${person.votes} votes
-          <div style="color:#ffd700;font-size:12px;">
-            ${escapeHTML(person.title)}
-          </div>
-        </div>
-      `).join("") || "No contestants yet.";
+          #${person.rank} — ${escapeHTML(person.name)} — ${person.votes} votes
+          <div style="color:#ffd700;font-size:12px;">${escapeHTML(person.title)}</div>
+        </div>`).join("") || "No contestants yet.";
     }
 
   } catch (error) {
@@ -834,11 +683,7 @@ async function previewAdminRankings() {
   }
 }
 
-
-/* =========================================================
-   24. ADMIN: PUBLISH RESULTS
-   ========================================================= */
-
+/* 21. ADMIN: PUBLISH RESULTS */
 async function publishResults() {
   if (!currentUser || currentUser.uid !== ADMIN_UID) {
     alert("Administrator access required.");
@@ -861,16 +706,11 @@ async function publishResults() {
 
   } catch (error) {
     console.error("Publish results error:", error);
-
     alert(`Could not publish results: ${error.message}`);
   }
 }
 
-
-/* =========================================================
-   25. ADMIN: CLOSE VOTING PERMANENTLY
-   ========================================================= */
-
+/* 22. ADMIN: CLOSE VOTING PERMANENTLY */
 async function closeVoting() {
   if (!currentUser || currentUser.uid !== ADMIN_UID) {
     alert("Administrator access required.");
@@ -895,9 +735,10 @@ async function closeVoting() {
     );
 
     votingClosed = true;
+    updateDateStatus();
+    renderContestants();
 
     const result = await calculateRankings();
-
     result.closed = true;
 
     await set(
@@ -909,39 +750,29 @@ async function closeVoting() {
 
   } catch (error) {
     console.error("Close voting error:", error);
-
     alert(`Could not complete the closing process: ${error.message}`);
   }
 }
 
-
-/* =========================================================
-   26. ADMIN: REFRESH RANKINGS
-   ========================================================= */
-
+/* 23. ADMIN: REFRESH RANKINGS */
 async function refreshAdminVotes() {
   await previewAdminRankings();
 }
 
-
-/* =========================================================
-   27. BUTTON EVENTS
-   ========================================================= */
-
+/* 24. BUTTON EVENTS */
 element("klcJoinBtn")?.addEventListener("click", joinChallenge);
 
-element("klcSearch")?.addEventListener("input", renderContestants);
+element("klcSearch")?.addEventListener(
+  "input",
+  renderContestants
+);
 
 element("klcContestants")?.addEventListener("click", event => {
   const button = event.target.closest("[data-vote-uid]");
-
   if (!button) return;
 
   const uid = button.getAttribute("data-vote-uid");
-
-  if (uid) {
-    castVote(uid);
-  }
+  if (uid) castVote(uid);
 });
 
 element("klcRefreshVotes")?.addEventListener(
@@ -959,60 +790,88 @@ element("klcCloseVoting")?.addEventListener(
   closeVoting
 );
 
+/* 25. AUTOMATIC NIGERIA-DATE ROLLOVER
+   The new day has its own database branches, so its entries and votes
+   naturally begin at zero. Previous days' records are preserved. */
+setInterval(() => {
+  const nigeriaToday = getNigeriaDate();
 
-/* =========================================================
-   28. AUTHENTICATION STARTUP
-   IMPORTANT: DATABASE LISTENERS START ONLY AFTER LOGIN
-   ========================================================= */
+  if (nigeriaToday === currentDate) return;
 
+  currentDate = nigeriaToday;
+
+  if (currentUser) {
+    startDailyListeners();
+  } else {
+    contestants = {};
+    voteCounts = {};
+    publishedResults = null;
+    myVote = null;
+    votingClosed = false;
+
+    renderContestants();
+    renderResults();
+    renderTopThree();
+    updateDateStatus();
+  }
+}, 30000);
+
+/* 26. AUTHENTICATION STARTUP
+   Database listeners start only after login and are cleaned up on logout. */
 onAuthStateChanged(auth, user => {
   currentUser = user || null;
 
+  const nextUid = currentUser?.uid || null;
+
   configureAdmin();
 
-  if (user) {
-    if (!listenersStarted) {
-      listenersStarted = true;
+  if (nextUid !== lastAuthUid) {
+    lastAuthUid = nextUid;
 
-      startEntryListener();
-      startSettingsListener();
-      startResultsListener();
+    if (currentUser) {
+      startDailyListeners();
+
+      showMessage(
+        "klcDateStatus",
+        "Your community account is connected. Loading the leadership challenge..."
+      );
+
+    } else {
+      stopDailyListeners();
+
+      contestants = {};
+      voteCounts = {};
+      publishedResults = null;
+      myVote = null;
+      votingClosed = false;
+
+      showMessage(
+        "klcDateStatus",
+        "Please sign in to your community account to access the challenge."
+      );
+
+      showMessage(
+        "klcContestants",
+        "Sign in to load today's contestants."
+      );
+
+      showMessage(
+        "klcResults",
+        "Sign in to load today's official results."
+      );
+
+      showMessage(
+        "klcTopThree",
+        "Sign in to load today's official leaders."
+      );
     }
-
-    if (!voteListenerStarted) {
-      startMyVoteListener();
-    }
-
-    showMessage(
-      "klcDateStatus",
-      "Your community account is connected. Loading the leadership challenge..."
-    );
-
-  } else {
-    showMessage(
-      "klcDateStatus",
-      "Please sign in to your community account to access the challenge."
-    );
-
-    showMessage(
-      "klcContestants",
-      "Sign in to load today's contestants."
-    );
-
-    showMessage(
-      "klcMyStatus",
-      "Sign in to enter and vote."
-    );
   }
 
+  renderContestants();
   renderMyStatus();
 });
 
-
-/* =========================================================
-   29. INITIAL DISPLAY
-   ========================================================= */
-
+/* 27. INITIAL DISPLAY */
 updateDateStatus();
 
 showMessage(
