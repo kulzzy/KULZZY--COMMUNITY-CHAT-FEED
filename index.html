@@ -3279,7 +3279,7 @@ class="notification-list">
       <div id="monetizationRequirementCelebrations">○ 5,000 celebrations</div>
       <div id="monetizationRequirementCurrency">○ K125,000 kulzzy currency</div>
     </div>
-    <div id="monetizationStatus" class="monetization-status">Progress is based on the profile statistics and recognised payment records available in this app. Withdrawals are not connected to a verified payout system.</div>
+    <div id="monetizationStatus" class="monetization-status" hidden></div>
   </section>
 </div>
 
@@ -3352,6 +3352,9 @@ import{
     setPersistence,
     browserLocalPersistence
 }from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// Initialize before any async startup callbacks can access this value.
+let allOwnPostIds=null;
 
 
 /* =========================
@@ -4667,7 +4670,6 @@ const uniquePostClickCounts=Object.create(null);
 const uniquePostClickers=Object.create(null);
 const uniquePostClickFetchedAt=Object.create(null);
 const uniquePostClickPromises=Object.create(null);
-let allOwnPostIds=null;
 
 function countOwnPostClicks(){
     if(Array.isArray(allOwnPostIds)){
