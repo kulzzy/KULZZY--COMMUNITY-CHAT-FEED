@@ -3901,6 +3901,7 @@ function startAuthListener(){
         /* Wait for Firebase to restore the saved login before showing the sign-up/login gate. */
         onAuthStateChanged(auth,async user=>{
             firebaseUser=user;
+            window.dispatchEvent(new Event("kulzzy-auth-state-received"));
 
             if(user){
                 setStableUserId(user.uid);
@@ -7559,6 +7560,47 @@ window.addEventListener(
 </script>
 
 <script type="module" src="./leadership.js"></script>
+
+<script>
+/* KULZZY STARTUP WATCHDOG
+   Avoid a permanent blank screen if Firebase's module fails to load. */
+(function(){
+  var authStarted = false;
+  var startupError = '';
+  window.addEventListener('kulzzy-auth-state-received', function(){ authStarted = true; });
+  window.addEventListener('error', function(event){
+    startupError = (event && (event.message || event.error && event.error.message)) || 'JavaScript startup error';
+    console.error('Kulzzy startup error:', event.message || event.error || event);
+  });
+  window.addEventListener('unhandledrejection', function(event){
+    var reason = event && event.reason;
+    startupError = (reason && (reason.message || String(reason))) || 'Startup promise rejected';
+    console.error('Kulzzy startup promise error:', event.reason || event);
+  });
+  window.__KULZZY_STARTUP_WATCHDOG__ = true;
+  window.setTimeout(function(){
+    if (authStarted) return;
+    var app = document.querySelector('.app');
+    if (app) app.style.display = 'block';
+    var old = document.getElementById('kulzzy-startup-warning');
+    if (!old) {
+      var box = document.createElement('div');
+      box.id = 'kulzzy-startup-warning';
+      box.setAttribute('role','alert');
+      box.style.cssText = 'position:fixed;left:10px;right:10px;top:10px;z-index:2147483647;background:#5b1b1b;color:#fff;padding:13px 15px;border:1px solid #ffd000;border-radius:12px;font:14px Arial,sans-serif;line-height:1.45;text-align:center;box-shadow:0 4px 18px #0008';
+      box.textContent = startupError ? ('Kulzzy Community startup error: ' + startupError + ' ') : 'Kulzzy Community login startup did not complete. ';
+      var retryButton = document.createElement('button');
+      retryButton.type = 'button';
+      retryButton.id = 'kulzzy-startup-retry';
+      retryButton.textContent = 'Retry';
+      retryButton.style.cssText = 'border:0;border-radius:7px;padding:6px 10px;margin-left:5px;background:#ffd000;color:#001b2b;font-weight:bold';
+      box.appendChild(retryButton);
+      document.body.appendChild(box);
+      document.getElementById('kulzzy-startup-retry').addEventListener('click', function(){ location.reload(); });
+    }
+  }, 12000);
+})();
+</script>
 
 </body>
 </html>
