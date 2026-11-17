@@ -6003,14 +6003,10 @@ async function deleteUploadedPicture(postId,imageIndex){
 
         images.splice(index,1);
 
-        if(!images.length){
-            await update(ref(db),{[`communityPosts/${postId}`]:null});
-        }else{
-            await update(ref(db),{
-                [`communityPosts/${postId}/images`]:images,
-                [`communityPosts/${postId}/image`]:images[0]
-            });
-        }
+        await update(ref(db),{
+            [`communityPosts/${postId}/images`]:images.length?images:null,
+            [`communityPosts/${postId}/image`]:images.length?images[0]:null
+        });
     }catch(error){
         console.error("Delete picture error:",error);
         throw error;
@@ -6047,14 +6043,10 @@ async function deleteSelectedUploadedPictures(){
                 if(index>=0 && index<images.length) images.splice(index,1);
             });
 
-            if(!images.length){
-                await update(ref(db),{[`communityPosts/${postId}`]:null});
-            }else{
-                await update(ref(db),{
-                    [`communityPosts/${postId}/images`]:images,
-                    [`communityPosts/${postId}/image`]:images[0]
-                });
-            }
+            await update(ref(db),{
+                [`communityPosts/${postId}/images`]:images.length?images:null,
+                [`communityPosts/${postId}/image`]:images.length?images[0]:null
+            });
         }
 
         showToast("Selected pictures deleted.");
@@ -7562,43 +7554,71 @@ window.addEventListener(
 </script>
 
 <script type="module" src="./leadership.js"></script>
+<script type="module">
+/* Live public vote totals for the current Nigeria-day challenge.
+   Totals are read from the existing daily vote records, so clearing the
+   day's vote records resets every displayed count to zero automatically. */
+import { getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+try {
+  const db = getDatabase(getApp());
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Lagos", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date());
+  const dateParts = {};
+  parts.forEach(part => dateParts[part.type] = part.value);
+  const today = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
+  let voteCounts = {};
+
+  function paintVoteCounts() {
+    const list = document.getElementById("klcContestants");
+    if (!list) return;
+    list.querySelectorAll("[data-vote-uid]").forEach(button => {
+      const uid = button.getAttribute("data-vote-uid");
+      if (!uid) return;
+      const row = button.parentElement;
+      if (!row) return;
+      let badge = row.querySelector("[data-live-vote-count]");
+      if (!badge) {
+        badge = document.createElement("div");
+        badge.setAttribute("data-live-vote-count", uid);
+        badge.style.cssText = "flex:0 0 auto;min-width:48px;text-align:center;color:#ffd700;font-size:12px;font-weight:900;line-height:1.35;";
+        row.insertBefore(badge, button);
+      }
+      const count = Number(voteCounts[uid] || 0);
+      badge.textContent = `${count} ${count === 1 ? "vote" : "votes"}`;
+      badge.setAttribute("aria-label", `${count} votes`);
+    });
+  }
+
+  const contestantsBox = document.getElementById("klcContestants");
+  if (contestantsBox) {
+    new MutationObserver(paintVoteCounts).observe(contestantsBox, { childList: true, subtree: true });
+  }
+
+  onValue(ref(db, `leadershipDailyVotes/${today}`), snapshot => {
+    voteCounts = {};
+    if (snapshot.exists()) {
+      snapshot.forEach(child => {
+        const vote = child.val() || {};
+        if (vote.candidateUid) voteCounts[vote.candidateUid] = (voteCounts[vote.candidateUid] || 0) + 1;
+      });
+    }
+    paintVoteCounts();
+  }, error => console.error("Leadership public vote counts:", error));
+} catch (error) {
+  console.error("Leadership vote count display could not start:", error);
+}
+</script>
 
 <script>
-/* KULZZY STARTUP WATCHDOG
-   Avoid a permanent blank screen if Firebase's module fails to load. */
+/* Silent startup fallback: never display technical startup errors to visitors. */
 (function(){
-  var authStarted = false;
-  var startupError = '';
-  window.addEventListener('kulzzy-auth-state-received', function(){ authStarted = true; });
-  window.addEventListener('error', function(event){
-    startupError = (event && (event.message || event.error && event.error.message)) || 'JavaScript startup error';
-    console.error('Kulzzy startup error:', event.message || event.error || event);
-  });
-  window.addEventListener('unhandledrejection', function(event){
-    var reason = event && event.reason;
-    startupError = (reason && (reason.message || String(reason))) || 'Startup promise rejected';
-    console.error('Kulzzy startup promise error:', event.reason || event);
-  });
-  window.__KULZZY_STARTUP_WATCHDOG__ = true;
   window.setTimeout(function(){
-    if (authStarted) return;
     var app = document.querySelector('.app');
-    if (app) app.style.display = 'block';
-    var old = document.getElementById('kulzzy-startup-warning');
-    if (!old) {
-      var box = document.createElement('div');
-      box.id = 'kulzzy-startup-warning';
-      box.setAttribute('role','alert');
-      box.style.cssText = 'position:fixed;left:10px;right:10px;top:10px;z-index:2147483647;background:#5b1b1b;color:#fff;padding:13px 15px;border:1px solid #ffd000;border-radius:12px;font:14px Arial,sans-serif;line-height:1.45;text-align:center;box-shadow:0 4px 18px #0008';
-      box.textContent = startupError ? ('Kulzzy Community startup error: ' + startupError + ' ') : 'Kulzzy Community login startup did not complete. ';
-      var retryButton = document.createElement('button');
-      retryButton.type = 'button';
-      retryButton.id = 'kulzzy-startup-retry';
-      retryButton.textContent = 'Retry';
-      retryButton.style.cssText = 'border:0;border-radius:7px;padding:6px 10px;margin-left:5px;background:#ffd000;color:#001b2b;font-weight:bold';
-      box.appendChild(retryButton);
-      document.body.appendChild(box);
-      document.getElementById('kulzzy-startup-retry').addEventListener('click', function(){ location.reload(); });
+    if (app && getComputedStyle(app).display === 'none') {
+      app.style.display = 'block';
     }
   }, 12000);
 })();
