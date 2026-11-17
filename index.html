@@ -3247,8 +3247,6 @@ import{
    FIREBASE
 ========================= */
 
-const KULZZY_CENTRAL_LOGIN_URL="https://kulzzy.github.io/KULZZY-RADIO-LOGIN/";
-
 const firebaseConfig={
 
     apiKey:
@@ -3296,6 +3294,11 @@ const globalNotificationsDb=getDatabase(globalNotificationsApp);
 
 const auth=
     getAuth(app);
+
+/* Shared picture-click statistics must exist before any profile or
+   monetization callback can run. */
+const uniquePostClickCounts={};
+let ownPostIds=[];
 
 
 /* =========================
@@ -3592,13 +3595,14 @@ const authError=$("authError");
 const authLogout=$("authLogout");
 let authMode="signup";
 
-function showAuthGate(){
-    authGate.style.display="flex";
+function showAuthGate(message=""){
+    if(authGate) authGate.style.display="flex";
     if(appRoot) appRoot.style.display="none";
+    if(message && authError) authError.textContent=message;
 }
 
 function hideAuthGate(){
-    authGate.style.display="none";
+    if(authGate) authGate.style.display="none";
     if(appRoot) appRoot.style.display="block";
 }
 
@@ -3663,8 +3667,8 @@ authSubmit.addEventListener("click", async()=>{
         localStorage.setItem("kulzzyCommunityLoggedIn","1");
         authEmail.value="";
         authPassword.value="";
-        hideAuthGate();
-        await loadFirebaseProfile();
+        revealCommunityAfterLogin();
+        loadFirebaseProfile().catch(error=>console.error("Profile loading after sign-in failed:",error));
     }catch(error){
         console.error("Email authentication error:",error);
         const code=error.code||"";
@@ -3788,47 +3792,82 @@ if(monetizationModal) monetizationModal.addEventListener("click",event=>{
     if(event.target===monetizationModal) monetizationClose.click();
 });
 
+
+function revealCommunityAfterLogin(){
+    if(authGate) authGate.style.display="none";
+    if(appRoot){
+        appRoot.style.setProperty("display","block","important");
+        appRoot.style.visibility="visible";
+        appRoot.style.opacity="1";
+    }
+}
+
 function startAuthListener(){
     return new Promise(resolve=>{
         let first=true;
-
-        /* Wait for Firebase to restore the saved login before showing the sign-up/login gate. */
-        onAuthStateChanged(auth,async user=>{
-            firebaseUser=user;
-
-            if(user){
-                setStableUserId(user.uid);
-                localStorage.setItem("kulzzyCommunityLoggedIn","1");
-                startPrivateNotificationsListener(user.uid);
-                
-                startOwnProfileStatsListeners();
-
-
-
-                hideAuthGate();
-                if(localStorage.getItem("kulzzyNewCommunityUser")==="1"){
-                    localStorage.removeItem("kulzzyNewCommunityUser");
-                    setTimeout(showFirstSignInPopup,300);
-                }
-
-                if(first){
-                    first=false;
-                    await loadFirebaseProfile();
-                    resolve(user);
-                }
-            }else{
-                startPrivateNotificationsListener(null);
-                localStorage.removeItem("kulzzyCommunityLoggedIn");
-                startOwnProfileStatsListeners();
-                if(first){
-                    first=false;
-                    const returnTo=encodeURIComponent(location.href.split("#")[0]);
-                    location.replace(KULZZY_CENTRAL_LOGIN_URL+"?return="+returnTo);
-                    resolve(null);
-                }
-                return;
+        const finish=value=>{
+            if(first){
+                first=false;
+                resolve(value);
             }
-        });
+        };
+
+        try{
+            onAuthStateChanged(auth,user=>{
+                firebaseUser=user;
+                window.__KULZZY_AUTH_READY__=true;
+                window.dispatchEvent(new Event("kulzzy-auth-state-received"));
+
+                if(user){
+                    setStableUserId(user.uid);
+                    localStorage.setItem("kulzzyCommunityLoggedIn","1");
+                    revealCommunityAfterLogin();
+
+                    /* Optional listeners must never prevent the Community page from appearing. */
+                    try{startPrivateNotificationsListener(user.uid);}
+                    catch(error){console.error("Private notifications could not start:",error);}
+                    try{startOwnProfileStatsListeners();}
+                    catch(error){console.error("Profile statistics could not start:",error);}
+
+                    if(localStorage.getItem("kulzzyNewCommunityUser")==="1"){
+                        localStorage.removeItem("kulzzyNewCommunityUser");
+                        setTimeout(showFirstSignInPopup,300);
+                    }
+
+                    finish(user);
+                    loadFirebaseProfile().catch(error=>console.error("Profile loading failed after login:",error));
+                }else{
+                    /* Stay on this page and show its own login form. Do not redirect to a
+                       different origin where Firebase's browser-local session may not exist. */
+                    try{startPrivateNotificationsListener(null);}
+                    catch(error){console.error("Notification cleanup failed:",error);}
+                    localStorage.removeItem("kulzzyCommunityLoggedIn");
+                    try{startOwnProfileStatsListeners();}
+                    catch(error){console.error("Profile statistics cleanup failed:",error);}
+                    showAuthGate();
+                    finish(null);
+                }
+            },error=>{
+                console.error("Community authentication listener failed:",error);
+                window.__KULZZY_AUTH_READY__=true;
+                window.dispatchEvent(new Event("kulzzy-auth-state-received"));
+                if(auth.currentUser){
+                    firebaseUser=auth.currentUser;
+                    setStableUserId(firebaseUser.uid);
+                    localStorage.setItem("kulzzyCommunityLoggedIn","1");
+                    revealCommunityAfterLogin();
+                    finish(firebaseUser);
+                    loadFirebaseProfile().catch(console.error);
+                }else{
+                    showAuthGate("Could not check your login. Check your internet connection and try again.");
+                    finish(null);
+                }
+            });
+        }catch(error){
+            console.error("Could not start Community authentication:",error);
+            showAuthGate("Login could not start. Check your internet connection and reload this page.");
+            finish(null);
+        }
     });
 }
 
@@ -4556,9 +4595,6 @@ menuShareProfile.onclick=async()=>{
 };
 
 
-const uniquePostClickCounts={};
-let ownPostIds=[];
-
 function countOwnPostClicks(){
     return ownPostIds.reduce((total,postId)=>total+Number(uniquePostClickCounts[postId]||0),0);
 }
@@ -4676,8 +4712,6 @@ function startOwnProfileStatsListeners(){
 
     refreshOwnUniquePostClickStats();
 }
-
-startOwnProfileStatsListeners();
 
 /* =========================
    FOLLOWERS / PICTURE CLICKERS / CELEBRATION DETAILS
@@ -7240,6 +7274,39 @@ window.addEventListener(
 </script>
 
 <script type="module" src="./leadership.js"></script>
+
+
+<script>
+/* KULZZY COMMUNITY STARTUP SAFETY CHECK
+   If the Firebase module never reaches its first auth callback, show a visible
+   recovery message instead of leaving a blank navy page. */
+(function(){
+  var startupError = '';
+  window.addEventListener('error', function(event){
+    startupError = (event && (event.message || (event.error && event.error.message))) || 'JavaScript startup error';
+  });
+  window.addEventListener('unhandledrejection', function(event){
+    var reason = event && event.reason;
+    startupError = (reason && (reason.message || String(reason))) || 'Startup promise rejected';
+  });
+  window.setTimeout(function(){
+    if (window.__KULZZY_AUTH_READY__) return;
+    var app = document.querySelector('.app');
+    var gate = document.getElementById('authGate');
+    if (app) app.style.display = 'none';
+    if (gate) gate.style.display = 'flex';
+    var box = document.getElementById('kulzzy-startup-warning');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'kulzzy-startup-warning';
+      box.setAttribute('role','alert');
+      box.style.cssText = 'position:fixed;left:12px;right:12px;bottom:14px;z-index:2147483647;background:#5b1b1b;color:#fff;padding:12px 14px;border:1px solid #ffd000;border-radius:12px;font:13px Arial,sans-serif;line-height:1.45;text-align:center;box-shadow:0 4px 18px #0008';
+      document.body.appendChild(box);
+    }
+    box.textContent = startupError ? ('Kulzzy Community could not start: ' + startupError + '. Check your connection and reload.') : 'Kulzzy Community sign-in is taking too long. Check your connection and reload the page.';
+  }, 12000);
+})();
+</script>
 
 </body>
 </html>
