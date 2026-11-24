@@ -85,7 +85,7 @@ function updateDateStatus() {
   const date = currentDate.split("-").reverse().join("/");
   showMessage(
     "klcDateStatus",
-    `Nigeria date: ${date} | ${votingClosed ? "Voting closed" : "Voting open"}`
+    `World date: ${date} | ${votingClosed ? "Voting closed" : "Voting open"}`
   );
 }
 
