@@ -7,7 +7,10 @@
 import {
   initializeApp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
 import {
   getDatabase,
   ref,
@@ -37,6 +40,12 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaEnterpriseProvider("6LcvSTMuAAAAAG1RmqKbB2dGD9edKwKjqtUE90Ap"),
+  isTokenAutoRefreshEnabled: true
+});
+
 const db = getDatabase(app);
 const auth = getAuth(app);
 
