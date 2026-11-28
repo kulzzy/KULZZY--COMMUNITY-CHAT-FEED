@@ -3683,8 +3683,8 @@ authSubmit.addEventListener("click", async()=>{
         else if(code.includes("invalid-credential")||code.includes("wrong-password")||code.includes("user-not-found")) authError.textContent="Email or password is incorrect.";
         else if(code.includes("invalid-email")) authError.textContent="Please enter a valid email address.";
         else if(code.includes("too-many-requests")) authError.textContent="Too many attempts. Please try again later.";
-        else if(code.includes("operation-not-allowed")) authError.textContent="This sign-in option is temporarily unavailable. Please contact support."; 
-        else authError.textContent="Unable to sign in right now. Please try again.";
+        else if(code.includes("operation-not-allowed")) authError.textContent="Email/Password sign-in is not enabled in Firebase Authentication.";
+        else authError.textContent=error.message||"Authentication failed.";
     }finally{
         setAuthBusy(false);
     }
@@ -3785,7 +3785,7 @@ function openMonetization(){
         $("monetizationStatus").textContent="";
     },error=>{
         console.error("Kulzzy monetization payment listener:",error);
-        $("monetizationStatus").textContent="Celebration payment details are temporarily unavailable. Please try again later.";
+        $("monetizationStatus").textContent="Could not read celebration payment records. Check Firebase access and the payment-record structure.";
     });
 }
 
@@ -4250,7 +4250,9 @@ async function uploadToCloudinary(file){
     ){
 
         throw new Error(
-            "Picture upload failed. Please try again."
+            data.error?.message ||
+            responseText ||
+            "Cloudinary upload failed."
         );
 
     }
@@ -4459,7 +4461,8 @@ saveBtn.onclick=
             );
 
             showToast(
-                "Unable to save your profile. Please check your details and try again."
+                error.message ||
+                "Unable to save profile."
             );
 
         }finally{
@@ -5297,7 +5300,7 @@ postPictureBtn.onclick=async()=>{
         cancelPostPreview();
         messageBox.value=""; resize();
         showToast("Picture posted successfully to the community feed.");
-    }catch(error){console.error("POST ERROR:",error);showToast("Unable to post your picture right now. Your preview is still here; please try again.");}
+    }catch(error){console.error("POST ERROR:",error);showToast(error.message||"Unable to post. Your preview is still here; please try again.");}
     finally{postPictureBtn.disabled=false;postPictureBtn.textContent="Post Picture";}
 };
 
@@ -5465,22 +5468,51 @@ async function sendPrivateMessage(targetUid,input){
 
     try{
 
+        const messageRef=push(
+            ref(
+                db,
+                "privateChats/" +
+                conversationId
+            )
+        );
+        const messageTime=Date.now();
+
         await set(
-            push(
-                ref(
-                    db,
-                    "privateChats/" +
-                    conversationId
-                )
-            ),
+            messageRef,
             {
                 senderUid:userId,
                 receiverUid:targetUid,
                 senderName:senderName,
                 text:text,
-                time:Date.now()
+                time:messageTime
             }
         );
+
+        // Save a private-message notification for the recipient.
+        // The message itself is never copied into the notification.
+        try{
+            await set(
+                push(ref(db,"notifications/"+targetUid)),
+                {
+                    type:"private_message",
+                    uid:targetUid,
+                    fromUid:userId,
+                    senderUid:userId,
+                    receiverUid:targetUid,
+                    profileUid:userId,
+                    conversationId:conversationId,
+                    messageId:messageRef.key,
+                    name:senderName,
+                    text:senderName+" sent you a private message.",
+                    time:messageTime
+                }
+            );
+        }catch(notificationError){
+            console.warn("Private message notification could not be saved:",notificationError);
+            input.value="";
+            showToast("Private message sent, but notification could not be delivered.");
+            return;
+        }
 
         input.value="";
 
@@ -6041,7 +6073,7 @@ async function deleteUploadedPicture(postId,imageIndex){
         }
     }catch(error){
         console.error("Delete picture error:",error);
-        if(error?.code==="PERMISSION_DENIED" || error?.code==="permission-denied") throw new Error("This picture could not be deleted right now. Please try again later.");
+        if(error?.code==="PERMISSION_DENIED" || error?.code==="permission-denied") throw new Error("Firebase does not currently allow this account to delete the picture. The database rules must allow the owner to delete their own community post.");
         throw error;
     }
 }
@@ -6074,7 +6106,7 @@ async function deleteSelectedUploadedPictures(){
         await openUploadedPictures();
     }catch(error){
         console.error("Delete selected pictures error:",error);
-        showToast("Some pictures could not be deleted. Please try again later.");
+        showToast(error?.message||"Some pictures could not be deleted. Check your Firebase database permissions.");
     }finally{deleteSelectedUploaded.disabled=false;}
 }
 
@@ -6115,7 +6147,7 @@ uploadedPicturesGrid.addEventListener("click",async event=>{
         await openUploadedPictures();
     }catch(error){
         console.error("Uploaded picture delete action failed:",error);
-        showToast("Picture could not be deleted. Please try again later.");
+        showToast(error?.message||"Picture could not be deleted. Check your Firebase database permissions.");
     }finally{button.disabled=false;}
 });
 
@@ -7307,7 +7339,7 @@ window.addEventListener(
       box.style.cssText = 'position:fixed;left:12px;right:12px;bottom:14px;z-index:2147483647;background:#5b1b1b;color:#fff;padding:12px 14px;border:1px solid #ffd000;border-radius:12px;font:13px Arial,sans-serif;line-height:1.45;text-align:center;box-shadow:0 4px 18px #0008';
       document.body.appendChild(box);
     }
-    box.textContent = 'Kulzzy Community could not start. Check your connection and reload the page.';
+    box.textContent = startupError ? ('Kulzzy Community could not start: ' + startupError + '. Check your connection and reload.') : 'Kulzzy Community sign-in is taking too long. Check your connection and reload the page.';
   }, 12000);
 })();
 </script>
