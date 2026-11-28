@@ -3218,10 +3218,9 @@ import{
 }from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
     initializeAppCheck,
-    ReCaptchaEnterpriseProvider,
-    getToken
+    ReCaptchaEnterpriseProvider
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
-import{
+    import{
     getDatabase,
     ref,
     push,
@@ -3286,69 +3285,6 @@ const appCheck = initializeAppCheck(app, {
     
 const db=
     getDatabase(app);
-/* =====================================
-   KULZZY APP CHECK TOKEN DIAGNOSTIC
-===================================== */
-
-const appCheckDiagnostic = document.createElement("div");
-
-appCheckDiagnostic.style.cssText = `
-position:fixed;
-top:10px;
-left:10px;
-right:10px;
-z-index:2147483647;
-padding:14px;
-border:2px solid #ffd000;
-border-radius:12px;
-background:#062d3e;
-color:#fff;
-font:14px Arial,sans-serif;
-line-height:1.5;
-text-align:center;
-word-break:break-word;
-box-shadow:0 5px 20px rgba(0,0,0,.5);
-`;
-
-appCheckDiagnostic.textContent =
-    "KULZZY SECURITY CHECK: Testing App Check token...";
-
-document.body.appendChild(appCheckDiagnostic);
-
-(async function testKulzzyAppCheck(){
-
-    try {
-
-        const result = await getToken(appCheck, true);
-
-        if (!result || !result.token) {
-            throw new Error("Firebase returned an empty App Check token.");
-        }
-
-        console.log("KULZZY APP CHECK: TOKEN RECEIVED");
-
-        appCheckDiagnostic.style.borderColor = "#00e676";
-
-        appCheckDiagnostic.innerHTML =
-            "✅ APP CHECK TOKEN RECEIVED<br>" +
-            "Firebase successfully obtained a security token.<br>" +
-            "Now send one test message in Community Chat.";
-
-    } catch(error) {
-
-        console.error("KULZZY APP CHECK TOKEN FAILURE:", error);
-
-        appCheckDiagnostic.style.borderColor = "#ff3333";
-
-        appCheckDiagnostic.innerHTML =
-            "❌ APP CHECK TOKEN FAILED<br>" +
-            "Error code: " + (error.code || "Not provided") +
-            "<br>Error: " +
-            (error.message || String(error));
-
-    }
-
-})();
     
 /* Separate public database used by the Global Notifications admin. */
 const globalNotificationsConfig={
